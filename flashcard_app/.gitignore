@@ -1,0 +1,86 @@
+# ─── Flutter / Dart ───────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.dart.js
+*.part.js
+*.js.deps
+*.js.map
+*.info.json
+pubspec.lock
+
+# ─── Firebase — NEVER commit these files ─────────────────────────────────────
+google-services.json
+GoogleService-Info.plist
+lib/firebase_options.dart
+
+# ─── Android ──────────────────────────────────────────────────────────────────
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/key.properties
+android/app/debug.keystore
+android/app/release.keystore
+*.jks
+*.keystore
+
+# ─── iOS ──────────────────────────────────────────────────────────────────────
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/Podfile.lock
+ios/**/*.mode1v3
+ios/**/*.mode2v3
+ios/**/*.moved-aside
+ios/**/*.pbxuser
+ios/**/*.perspectivev3
+ios/**/xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Podfile.lock
+
+# ─── Web ──────────────────────────────────────────────────────────────────────
+lib/generated_plugin_registrant.dart
+
+# ─── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.p8
+*.p12
+secrets/
+
+# ─── Hive local database files ────────────────────────────────────────────────
+*.hive
+*.lock
+
+# ─── Generated code ───────────────────────────────────────────────────────────
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# ─── Test coverage ────────────────────────────────────────────────────────────
+coverage/
+lcov.info
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log

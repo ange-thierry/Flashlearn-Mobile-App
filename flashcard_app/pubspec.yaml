@@ -1,0 +1,62 @@
+name: flashcard_app
+description: Flashcard Learning App with Firebase push notifications
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
+  firebase_messaging: ^15.0.0
+  flutter_local_notifications: ^17.0.0
+
+  # State management
+  provider: ^6.1.1
+
+  # UI / UX
+  flip_card: ^0.7.0
+  animate_do: ^3.3.4
+  lottie: ^2.7.0
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+
+  # Storage
+  shared_preferences: ^2.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Auth
+  google_sign_in: ^6.2.0
+
+  # Email
+  mailer: ^6.0.0
+
+  # Utils
+  intl: ^0.18.1
+  uuid: ^4.2.2
+  google_fonts: ^6.1.0
+
+  # PDF / Print / Download
+  pdf: ^3.10.8
+  printing: ^5.12.0
+
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
