@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 
 // ── SMART NOTES SCREEN ────────────────────────────────────────────────────────
@@ -72,6 +74,35 @@ class _SmartNotesScreenState extends State<SmartNotesScreen>
     }
   }
 
+  Future<void> _importFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['txt'],
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      String content;
+      if (file.bytes != null) {
+        content = String.fromCharCodes(file.bytes!);
+      } else if (file.path != null) {
+        content = await File(file.path!).readAsString();
+      } else {
+        _showSnack('Could not read file.');
+        return;
+      }
+      setState(() {
+        _controller.text = content;
+        _cards = [];
+        _generated = false;
+      });
+      _showSnack('File imported — tap Generate to create flashcards.');
+    } catch (_) {
+      _showSnack('Failed to import file. Please try a .txt file.');
+    }
+  }
+
   void _clear() {
     setState(() {
       _controller.clear();
@@ -123,6 +154,11 @@ class _SmartNotesScreenState extends State<SmartNotesScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.upload_file_rounded, size: 22),
+            tooltip: 'Import .txt file',
+            onPressed: _importFile,
+          ),
           if (_controller.text.isNotEmpty || _generated)
             TextButton(
               onPressed: _clear,
@@ -153,6 +189,8 @@ class _SmartNotesScreenState extends State<SmartNotesScreen>
               isDark: isDark,
               onChanged: (_) => setState(() {}),
             ),
+            const SizedBox(height: 10),
+            _ImportFileButton(onTap: _importFile, isDark: isDark),
             const SizedBox(height: 14),
             _GenerateButton(
               generating: _generating,
@@ -181,6 +219,32 @@ class _SmartNotesScreenState extends State<SmartNotesScreen>
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── IMPORT FILE BUTTON ────────────────────────────────────────────────────────
+
+class _ImportFileButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final bool isDark;
+  const _ImportFileButton({required this.onTap, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.upload_file_rounded, size: 16),
+      label: const Text('Import .txt file',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.primary,
+        side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.40)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        minimumSize: const Size(double.infinity, 44),
+        backgroundColor: AppTheme.primary.withValues(alpha: 0.04),
       ),
     );
   }
