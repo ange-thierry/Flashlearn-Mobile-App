@@ -38,6 +38,9 @@ dependencies:
   # Email
   mailer: ^6.0.0
 
+  # File import
+  file_picker: ^6.1.1
+
   # Utils
   intl: ^0.18.1
   uuid: ^4.2.2
@@ -60,3 +63,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/smart_notes_sample.txt

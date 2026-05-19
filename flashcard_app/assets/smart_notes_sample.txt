@@ -1,0 +1,80 @@
+BIOLOGY & SCIENCE — SMART NOTES SAMPLE
+========================================
+Upload this file into Smart Notes to auto-generate flashcards.
+
+-- CELL BIOLOGY --
+
+Photosynthesis is the process by which plants convert sunlight into chemical energy stored as glucose.
+The mitochondria is the powerhouse of the cell responsible for producing ATP through cellular respiration.
+Osmosis refers to the movement of water molecules across a semi-permeable membrane from an area of low solute concentration to high solute concentration.
+Cellular respiration is the process by which cells break down glucose to release energy in the form of ATP.
+The nucleus is the control centre of the cell containing the genetic material in the form of DNA.
+DNA consists of four nucleotide bases: adenine, thymine, guanine, and cytosine.
+The cell membrane is made up of a phospholipid bilayer that controls what enters and exits the cell.
+Ribosomes are the organelles responsible for synthesising proteins from messenger RNA instructions.
+Diffusion refers to the movement of particles from an area of high concentration to an area of low concentration.
+The endoplasmic reticulum is the organelle that involves the transport and modification of proteins and lipids within the cell.
+An example of an organelle found only in plant cells is the chloroplast.
+An example of passive transport is simple diffusion across the cell membrane.
+
+-- ECOLOGY --
+
+An ecosystem consists of all the living organisms and non-living environmental factors interacting in a particular area.
+Photosynthesis involves the absorption of carbon dioxide and water to produce glucose and oxygen.
+A food chain describes the transfer of energy from one organism to another.
+Biodiversity refers to the variety of living species found within a given habitat or region.
+The nitrogen cycle is the process by which nitrogen is converted between its various chemical forms as it circulates through the atmosphere and ecosystems.
+Primary producers are organisms that are capable of producing their own food through photosynthesis.
+An example of a primary consumer is a rabbit feeding on grass in a meadow ecosystem.
+Decomposers are organisms that break down dead organic matter, returning nutrients to the soil.
+A habitat is the natural environment in which an organism lives and obtains its resources.
+
+-- HUMAN BIOLOGY --
+
+The circulatory system consists of the heart, blood vessels, and blood working together to transport oxygen and nutrients.
+Haemoglobin is the protein found in red blood cells responsible for carrying oxygen from the lungs to body tissues.
+The nervous system refers to the network of nerves and cells that carry signals between the brain and other parts of the body.
+Homeostasis is the process by which the body maintains a stable internal environment despite changes in external conditions.
+Enzymes are biological catalysts that are made up of protein molecules and speed up chemical reactions without being consumed.
+The respiratory system involves the intake of oxygen and the release of carbon dioxide through the lungs.
+Insulin is the hormone produced by the pancreas that regulates blood glucose levels by enabling cells to absorb glucose.
+Neurons are specialised cells that are responsible for transmitting electrical signals throughout the nervous system.
+An example of a reflex action is the withdrawal of a hand from a hot surface.
+The skeletal system consists of bones, cartilage, and ligaments that provide structure and protect internal organs.
+
+-- CHEMISTRY --
+
+An atom consists of a nucleus containing protons and neutrons, surrounded by electrons in energy levels.
+Ionic bonding refers to the electrostatic attraction between oppositely charged ions formed by the transfer of electrons.
+An element is a pure substance that is made up of only one type of atom and cannot be broken down further by chemical means.
+Covalent bonding involves the sharing of electrons between two non-metal atoms to achieve a stable electron configuration.
+The periodic table is the organised arrangement of elements in order of increasing atomic number.
+A chemical reaction refers to the process by which reactants are transformed into products through the breaking and forming of chemical bonds.
+An example of an exothermic reaction is the combustion of methane gas in the presence of oxygen.
+Oxidation refers to the loss of electrons or an increase in oxidation state during a chemical reaction.
+Reduction refers to the gain of electrons or a decrease in oxidation state during a chemical reaction.
+Acids are substances that are capable of donating protons in an aqueous solution and have a pH below 7.
+
+-- PHYSICS --
+
+Newton's first law of motion refers to the tendency of an object to remain at rest or continue in uniform motion unless acted upon by an external force.
+Velocity is the speed of an object in a specific direction and is measured in metres per second.
+Kinetic energy is the energy an object possesses due to its motion.
+The speed formula is distance divided by time.
+Gravity is the force of attraction between two objects that is proportional to their masses.
+Electromagnetic waves are waves that consist of oscillating electric and magnetic fields that travel at the speed of light.
+An example of electromagnetic radiation is visible light, which has wavelengths between 400 and 700 nanometres.
+Refraction refers to the bending of light as it passes from one medium to another due to a change in speed.
+The law of conservation of energy refers to the principle that energy cannot be created or destroyed, only transferred or transformed.
+Resistance is the opposition to the flow of electric current in a conductor.
+
+-- HISTORY OF SCIENCE --
+
+Penicillin was discovered by Alexander Fleming in 1928 when he observed mould killing bacteria in a petri dish.
+The theory of evolution was introduced by Charles Darwin in his 1859 publication On the Origin of Species.
+The structure of DNA was discovered by Watson and Crick in 1953 using X-ray crystallography data.
+Gravity as a universal force was established by Isaac Newton in the late seventeenth century.
+The periodic table was created by Dmitri Mendeleev in 1869 to organise the known elements by atomic mass.
+Vaccination was invented by Edward Jenner in 1796 following his work with cowpox and smallpox.
+The telephone was invented by Alexander Graham Bell in 1876 following years of experiments with sound transmission.
+The theory of relativity was introduced by Albert Einstein in 1905 describing the relationship between space, time, and energy.
