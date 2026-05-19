@@ -24,6 +24,7 @@ import 'screens/bookmarks_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/certificate_screen.dart';
 import 'screens/award_certificate_screen.dart';
+import 'screens/smart_notes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,6 +83,7 @@ class FlashcardApp extends StatelessWidget {
         '/stats':         (_) => const StatsScreen(),
         '/certificate':       (_) => const CertificateScreen(),
         '/award-certificate': (_) => const AwardCertificateScreen(),
+        '/smart-notes':       (_) => const SmartNotesScreen(),
       },
     );
   }

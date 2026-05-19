@@ -1731,12 +1731,23 @@ class _FieldsScreenState extends State<FieldsScreen> {
                 color: AppTheme.normal,
                 onTap: setGoals,
               ),
-              const SizedBox(width: 10),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
               _QuickActionBtn(
                 icon: Icons.bar_chart_rounded,
                 label: 'View Stats',
                 color: AppTheme.easy,
                 onTap: () => Navigator.pushNamed(context, '/stats'),
+              ),
+              const SizedBox(width: 10),
+              _QuickActionBtn(
+                icon: Icons.description_rounded,
+                label: 'Smart Notes',
+                color: const Color(0xFF6366F1),
+                onTap: () => Navigator.pushNamed(context, '/smart-notes'),
               ),
             ],
           ),
