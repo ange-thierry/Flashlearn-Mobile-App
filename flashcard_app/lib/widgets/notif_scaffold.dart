@@ -2,7 +2,6 @@
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/app_provider.dart';
-import '../theme/app_theme.dart';
 import 'notification_bell.dart';
 import 'notification_panel.dart';
 import 'achievement_banner.dart';
@@ -31,7 +30,7 @@ class _NotifScaffoldState extends State<NotifScaffold> {
     final top = MediaQuery.of(context).viewPadding.top;
 
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [

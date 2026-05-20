@@ -98,7 +98,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final bot = MediaQuery.of(context).viewPadding.bottom;
 
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Gradient header ───────────────────────────────────────────────

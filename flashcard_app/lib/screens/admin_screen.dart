@@ -54,7 +54,7 @@ class _AdminScreenState extends State<AdminScreen>
     (Icons.grid_view_rounded,     Icons.grid_view_outlined,     'Fields'),
     (Icons.library_books_rounded, Icons.library_books_outlined, 'Content'),
     (Icons.timeline_rounded,      Icons.timeline_outlined,      'Activity'),
-    (Icons.manage_accounts_rounded, Icons.manage_accounts_outlined, 'Profile'),
+    (Icons.notifications_rounded,   Icons.notifications_outlined,   'Alerts'),
   ];
 
   @override
@@ -176,9 +176,8 @@ class _AdminAppBarState extends State<_AdminAppBar> {
     'Platform at a glance',
     'Manage study subjects',
     'Cards & questions',
-    'Learner accounts',
-    'Live system feed',
-    'Account & settings',
+    'Admin activity log',
+    'Push notifications & alerts',
   ];
 
   @override
@@ -456,34 +455,187 @@ class _AdminAvatar extends StatelessWidget {
   final AppProvider prov;
   const _AdminAvatar({required this.isDark, required this.prov});
 
-  @override
-  Widget build(BuildContext context) {
-    final photoUrl = prov.auth.photoURL;
-    final name = prov.auth.displayName;
+  void _openProfileSheet(BuildContext context) {
+    final auth    = prov.auth;
+    final name    = auth.displayName;
+    final email   = auth.userEmail ?? '';
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'A';
-    final borderColor = isDark ? const Color(0xFF3FB950) : _green;
-    final bgColor = isDark
-        ? _green.withValues(alpha: 0.20)
-        : _green.withValues(alpha: 0.12);
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: borderColor, width: 2),
-      ),
-      child: ClipOval(
-        child: photoUrl != null && photoUrl.isNotEmpty
-            ? Image.network(
-                photoUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _LetterAvatar(initial: initial, bgColor: bgColor),
-              )
-            : _LetterAvatar(initial: initial, bgColor: bgColor),
+    final photoUrl = auth.photoURL;
+    final bot = MediaQuery.of(context).viewPadding.bottom;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.fromLTRB(24, 14, 24, bot + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Avatar + name + role
+            Row(
+              children: [
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _green, width: 2.5),
+                    boxShadow: [BoxShadow(color: _green.withValues(alpha: 0.22), blurRadius: 14)],
+                  ),
+                  child: ClipOval(
+                    child: photoUrl != null && photoUrl.isNotEmpty
+                        ? Image.network(photoUrl, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _AvatarInitial(initial: initial))
+                        : _AvatarInitial(initial: initial),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ink),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(email,
+                          style: const TextStyle(fontSize: 12, color: _sub),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _green.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _green.withValues(alpha: 0.35), width: 1),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_rounded, size: 11, color: _green),
+                            SizedBox(width: 4),
+                            Text('Super Admin',
+                                style: TextStyle(color: _green, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            // Info rows
+            _ProfileInfoRow(icon: Icons.email_outlined,     label: 'Email',        value: email.isEmpty ? '—' : email),
+            const SizedBox(height: 10),
+            _ProfileInfoRow(icon: Icons.shield_outlined,    label: 'Role',         value: 'Administrator'),
+            const SizedBox(height: 10),
+            _ProfileInfoRow(icon: Icons.lock_open_rounded,  label: 'Access',       value: 'Full Access'),
+            const SizedBox(height: 10),
+            _ProfileInfoRow(icon: Icons.cloud_done_rounded, label: 'Backend',      value: 'Firebase / Firestore'),
+            const SizedBox(height: 22),
+            // Sign-out
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await prov.auth.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+                  }
+                },
+                icon: const Icon(Icons.logout_rounded, size: 17),
+                label: const Text('Sign Out'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = prov.auth.photoURL;
+    final name     = prov.auth.displayName;
+    final initial  = name.isNotEmpty ? name[0].toUpperCase() : 'A';
+    final borderColor = isDark ? const Color(0xFF3FB950) : _green;
+    final bgColor     = isDark ? _green.withValues(alpha: 0.20) : _green.withValues(alpha: 0.12);
+    return GestureDetector(
+      onTap: () => _openProfileSheet(context),
+      child: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: borderColor, width: 2)),
+        child: ClipOval(
+          child: photoUrl != null && photoUrl.isNotEmpty
+              ? Image.network(photoUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _LetterAvatar(initial: initial, bgColor: bgColor))
+              : _LetterAvatar(initial: initial, bgColor: bgColor),
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarInitial extends StatelessWidget {
+  final String initial;
+  const _AvatarInitial({required this.initial});
+  @override
+  Widget build(BuildContext context) => Container(
+    color: _green.withValues(alpha: 0.12),
+    child: Center(
+      child: Text(initial, style: const TextStyle(color: _green, fontSize: 22, fontWeight: FontWeight.w800)),
+    ),
+  );
+}
+
+class _ProfileInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  const _ProfileInfoRow({required this.icon, required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 30, height: 30,
+        decoration: BoxDecoration(color: _green.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, size: 14, color: _green),
+      ),
+      const SizedBox(width: 10),
+      Text(label, style: const TextStyle(fontSize: 13, color: _sub)),
+      const Spacer(),
+      Flexible(
+        child: Text(value,
+            style: const TextStyle(fontSize: 12, color: _ink, fontWeight: FontWeight.w600),
+            maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end),
+      ),
+    ],
+  );
 }
 
 class _LetterAvatar extends StatelessWidget {
@@ -725,7 +877,7 @@ class _OverviewSectionState extends State<_OverviewSection> {
                   ]),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 120,
+                    height: 110,
                     child: _ActivityBarChart(data: dailyTotals),
                   ),
                 ],
@@ -911,7 +1063,7 @@ class _ActivityBarChartState extends State<_ActivityBarChart>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 600),
                       curve: Curves.easeOut,
-                      height: (88 * frac * _anim.value).clamp(4.0, 88.0),
+                      height: (72 * frac * _anim.value).clamp(4.0, 72.0),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isToday
@@ -1266,57 +1418,81 @@ class _FieldsSection extends StatelessWidget {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.desc ?? '');
     final iconCtrl = TextEditingController(text: existing?.icon ?? '');
+
+    final initName = existing?.name ?? '';
+    final initDesc = existing?.desc ?? '';
+    final initIcon = existing?.icon ?? '';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(existing == null ? 'Add New Field' : 'Edit Field',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DialogField(ctrl: iconCtrl, label: 'Emoji Icon', hint: 'e.g. 📚'),
-            const SizedBox(height: 12),
-            _DialogField(ctrl: nameCtrl, label: 'Subject Name', hint: 'e.g. Mathematics'),
-            const SizedBox(height: 12),
-            _DialogField(ctrl: descCtrl, label: 'Description', hint: 'Short description', maxLines: 2),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              final desc = descCtrl.text.trim();
-              final icon = iconCtrl.text.trim();
-              if (name.isEmpty) return;
-              if (existing == null) {
-                prov.addField(FieldModel(
-                  id: name.toLowerCase().replaceAll(' ', '_'),
-                  name: name,
-                  icon: icon.isEmpty ? 'subject' : icon,
-                  colorValue: 0xFF5B5FEF,
-                  desc: desc,
-                  gradientHex: const ['3730A3', '5B5FEF'],
-                ));
-              } else {
-                prov.updateField(FieldModel(
-                  id: existing.id,
-                  name: name,
-                  icon: icon.isEmpty ? existing.icon : icon,
-                  colorValue: existing.colorValue,
-                  desc: desc,
-                  gradientHex: existing.gradientHex,
-                ));
-              }
-              Navigator.pop(ctx);
-            },
-            child: Text(existing == null ? 'Add' : 'Save'),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        final name = nameCtrl.text.trim();
+        final desc = descCtrl.text.trim();
+        final icon = iconCtrl.text.trim();
+        final isValid = name.isNotEmpty;
+        final isDirty = existing == null
+            ? isValid
+            : (name != initName || desc != initDesc || icon != initIcon) && isValid;
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(existing == null ? 'Add New Field' : 'Edit Field',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DialogField(ctrl: iconCtrl, label: 'Emoji Icon', hint: 'e.g. 📚', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: nameCtrl, label: 'Subject Name', hint: 'e.g. Mathematics', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: descCtrl, label: 'Description', hint: 'Short description', maxLines: 2, onChanged: (_) => setS(() {})),
+              ],
+            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDirty ? _indigo : _sub,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: isDirty ? () {
+                if (existing == null) {
+                  prov.addField(FieldModel(
+                    id: name.toLowerCase().replaceAll(' ', '_'),
+                    name: name,
+                    icon: icon.isEmpty ? 'subject' : icon,
+                    colorValue: 0xFF5B5FEF,
+                    desc: desc,
+                    gradientHex: const ['3730A3', '5B5FEF'],
+                  ));
+                } else {
+                  prov.updateField(FieldModel(
+                    id: existing.id,
+                    name: name,
+                    icon: icon.isEmpty ? existing.icon : icon,
+                    colorValue: existing.colorValue,
+                    desc: desc,
+                    gradientHex: existing.gradientHex,
+                  ));
+                }
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(existing == null ? 'Field "$name" added.' : 'Field "$name" updated.'),
+                    backgroundColor: _green,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } : null,
+              child: Text(existing == null ? 'Add' : 'Save'),
+            ),
+          ],
+        );
+      }),
     );
   }
 }
@@ -1382,12 +1558,12 @@ class _FieldCardState extends State<_FieldCard> {
                           Text(widget.field.desc,
                               style: TextStyle(fontSize: 11, color: _sub)),
                           const SizedBox(height: 7),
-                          Row(
+                          Wrap(
+                            spacing: 5,
+                            runSpacing: 4,
                             children: [
                               _DarkChip('$cardCount cards', _indigo),
-                              const SizedBox(width: 6),
                               _DarkChip('$mcqCount MCQ', _amber),
-                              const SizedBox(width: 6),
                               _DarkChip('3 levels', _green),
                             ],
                           ),
@@ -1428,41 +1604,66 @@ class _FieldCardState extends State<_FieldCard> {
     final nameCtrl = TextEditingController(text: widget.field.name);
     final descCtrl = TextEditingController(text: widget.field.desc);
     final iconCtrl = TextEditingController(text: widget.field.icon);
+    final initName = widget.field.name;
+    final initDesc = widget.field.desc;
+    final initIcon = widget.field.icon;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Field', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DialogField(ctrl: iconCtrl, label: 'Emoji Icon', hint: 'e.g. 📐'),
-            const SizedBox(height: 12),
-            _DialogField(ctrl: nameCtrl, label: 'Subject Name', hint: ''),
-            const SizedBox(height: 12),
-            _DialogField(ctrl: descCtrl, label: 'Description', hint: '', maxLines: 2),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              widget.prov.updateField(FieldModel(
-                id: widget.field.id,
-                name: nameCtrl.text.trim().isEmpty ? widget.field.name : nameCtrl.text.trim(),
-                icon: iconCtrl.text.trim().isEmpty ? widget.field.icon : iconCtrl.text.trim(),
-                colorValue: widget.field.colorValue,
-                desc: descCtrl.text.trim().isEmpty ? widget.field.desc : descCtrl.text.trim(),
-                gradientHex: widget.field.gradientHex,
-              ));
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        final name = nameCtrl.text.trim();
+        final desc = descCtrl.text.trim();
+        final icon = iconCtrl.text.trim();
+        final isValid = name.isNotEmpty;
+        final isDirty = (name != initName || desc != initDesc || icon != initIcon) && isValid;
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Edit Field', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DialogField(ctrl: iconCtrl, label: 'Emoji Icon', hint: 'e.g. 📐', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: nameCtrl, label: 'Subject Name', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: descCtrl, label: 'Description', hint: '', maxLines: 2, onChanged: (_) => setS(() {})),
+              ],
+            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDirty ? _indigo : _sub,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: isDirty ? () {
+                widget.prov.updateField(FieldModel(
+                  id: widget.field.id,
+                  name: name,
+                  icon: icon.isEmpty ? initIcon : icon,
+                  colorValue: widget.field.colorValue,
+                  desc: desc.isEmpty ? initDesc : desc,
+                  gradientHex: widget.field.gradientHex,
+                ));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Field "$name" updated.'),
+                    backgroundColor: _green,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } : null,
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -1748,38 +1949,64 @@ class _StudyCardsTab extends StatelessWidget {
       {String? level, String? q, String? a, String? docId}) {
     final qCtrl = TextEditingController(text: q ?? '');
     final aCtrl = TextEditingController(text: a ?? '');
-    String sel = level ?? 'easy';
+    final initQ   = q ?? '';
+    final initA   = a ?? '';
+    final initLvl = level ?? 'easy';
+    String sel = initLvl;
+
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(docId == null ? 'Add Study Card' : 'Edit Study Card',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _LevelPicker(selected: sel, onChanged: (v) => setS(() => sel = v)),
-            const SizedBox(height: 14),
-            _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3),
-            const SizedBox(height: 12),
-            _DialogField(ctrl: aCtrl, label: 'Answer', hint: 'Correct answer…', maxLines: 3),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-              final q2 = qCtrl.text.trim(); final a2 = aCtrl.text.trim();
-              if (q2.isEmpty || a2.isEmpty) return;
-              await FirestoreService().saveAdminCard(fieldId: fieldId, level: sel, question: q2, answer: a2, docId: docId);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        final q2 = qCtrl.text.trim();
+        final a2 = aCtrl.text.trim();
+        final isValid = q2.isNotEmpty && a2.isNotEmpty;
+        final isDirty = docId == null
+            ? isValid
+            : isValid && (q2 != initQ || a2 != initA || sel != initLvl);
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(docId == null ? 'Add Study Card' : 'Edit Study Card',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LevelPicker(selected: sel, onChanged: (v) => setS(() => sel = v)),
+                const SizedBox(height: 14),
+                _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3, onChanged: (_) => setS(() {})),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: aCtrl, label: 'Answer', hint: 'Correct answer…', maxLines: 3, onChanged: (_) => setS(() {})),
+              ],
+            ),
           ),
-        ],
-      )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDirty ? _indigo : _sub,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: isDirty ? () async {
+                await FirestoreService().saveAdminCard(fieldId: fieldId, level: sel, question: q2, answer: a2, docId: docId);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(docId == null ? 'Card added successfully.' : 'Card updated successfully.'),
+                      backgroundColor: _green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } : null,
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -1913,52 +2140,78 @@ class _MCQTab extends StatelessWidget {
     final o2 = TextEditingController(text: opts != null && opts.length > 1 ? opts[1] : '');
     final o3 = TextEditingController(text: opts != null && opts.length > 2 ? opts[2] : '');
     final o4 = TextEditingController(text: opts != null && opts.length > 3 ? opts[3] : '');
-    String sel = level ?? 'easy';
+    final initQ   = question ?? '';
+    final initA   = correct ?? '';
+    final initOpts = opts ?? [];
+    final initLvl  = level ?? 'easy';
+    String sel = initLvl;
+
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(docId == null ? 'Add MCQ Question' : 'Edit MCQ Question',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _LevelPicker(selected: sel, onChanged: (v) => setS(() => sel = v)),
-              const SizedBox(height: 12),
-              _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3),
-              const SizedBox(height: 10),
-              _DialogField(ctrl: cCtrl, label: 'Correct Answer', hint: 'The right answer'),
-              const SizedBox(height: 10),
-              _DialogField(ctrl: o1, label: 'Option 1', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o2, label: 'Option 2', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o3, label: 'Option 3', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o4, label: 'Option 4', hint: ''),
-            ],
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        final q2 = qCtrl.text.trim();
+        final a2 = cCtrl.text.trim();
+        final curOpts = [o1.text.trim(), o2.text.trim(), o3.text.trim(), o4.text.trim()].where((o) => o.isNotEmpty).toList();
+        final isValid = q2.isNotEmpty && a2.isNotEmpty && curOpts.length >= 2;
+        final isDirty = docId == null
+            ? isValid
+            : isValid && (q2 != initQ || a2 != initA || sel != initLvl ||
+                curOpts.join('|') != initOpts.join('|'));
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(docId == null ? 'Add MCQ Question' : 'Edit MCQ Question',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LevelPicker(selected: sel, onChanged: (v) => setS(() => sel = v)),
+                const SizedBox(height: 12),
+                _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3, onChanged: (_) => setS(() {})),
+                const SizedBox(height: 10),
+                _DialogField(ctrl: cCtrl, label: 'Correct Answer', hint: 'The right answer', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 10),
+                _DialogField(ctrl: o1, label: 'Option 1', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o2, label: 'Option 2', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o3, label: 'Option 3', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o4, label: 'Option 4', hint: '', onChanged: (_) => setS(() {})),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-              final q2 = qCtrl.text.trim(); final a2 = cCtrl.text.trim();
-              if (q2.isEmpty || a2.isEmpty) return;
-              final options = [o1.text.trim(), o2.text.trim(), o3.text.trim(), o4.text.trim()]
-                  .where((o) => o.isNotEmpty).toList();
-              if (!options.contains(a2)) options.insert(0, a2);
-              await FirestoreService().saveAdminQuestion(
-                  fieldId: fieldId, level: sel, question: q2, correctAnswer: a2, options: options, docId: docId);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDirty ? _indigo : _sub,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: isDirty ? () async {
+                final options = [...curOpts];
+                if (!options.contains(a2)) options.insert(0, a2);
+                await FirestoreService().saveAdminQuestion(
+                    fieldId: fieldId, level: sel, question: q2, correctAnswer: a2, options: options, docId: docId);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(docId == null ? 'Question added successfully.' : 'Question updated successfully.'),
+                      backgroundColor: _green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } : null,
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -2201,49 +2454,73 @@ class _FinalExamTab extends StatelessWidget {
     final o2 = TextEditingController(text: opts != null && opts.length > 1 ? opts[1] : '');
     final o3 = TextEditingController(text: opts != null && opts.length > 2 ? opts[2] : '');
     final o4 = TextEditingController(text: opts != null && opts.length > 3 ? opts[3] : '');
+    final initQ    = question ?? '';
+    final initA    = correct ?? '';
+    final initOpts = opts ?? [];
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(docId == null ? 'Add Final Exam Question' : 'Edit Final Exam Question',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3),
-              const SizedBox(height: 10),
-              _DialogField(ctrl: cCtrl, label: 'Correct Answer', hint: 'The right answer'),
-              const SizedBox(height: 10),
-              _DialogField(ctrl: o1, label: 'Option 1', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o2, label: 'Option 2', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o3, label: 'Option 3', hint: ''),
-              const SizedBox(height: 8),
-              _DialogField(ctrl: o4, label: 'Option 4', hint: ''),
-            ],
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        final q2 = qCtrl.text.trim();
+        final a2 = cCtrl.text.trim();
+        final curOpts = [o1.text.trim(), o2.text.trim(), o3.text.trim(), o4.text.trim()].where((o) => o.isNotEmpty).toList();
+        final isValid = q2.isNotEmpty && a2.isNotEmpty && curOpts.length >= 2;
+        final isDirty = docId == null
+            ? isValid
+            : isValid && (q2 != initQ || a2 != initA || curOpts.join('|') != initOpts.join('|'));
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(docId == null ? 'Add Final Exam Question' : 'Edit Final Exam Question',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DialogField(ctrl: qCtrl, label: 'Question', hint: 'What is…?', maxLines: 3, onChanged: (_) => setS(() {})),
+                const SizedBox(height: 10),
+                _DialogField(ctrl: cCtrl, label: 'Correct Answer', hint: 'The right answer', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 10),
+                _DialogField(ctrl: o1, label: 'Option 1', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o2, label: 'Option 2', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o3, label: 'Option 3', hint: '', onChanged: (_) => setS(() {})),
+                const SizedBox(height: 8),
+                _DialogField(ctrl: o4, label: 'Option 4', hint: '', onChanged: (_) => setS(() {})),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _indigo, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () async {
-              final q2 = qCtrl.text.trim(); final a2 = cCtrl.text.trim();
-              if (q2.isEmpty || a2.isEmpty) return;
-              final options = [o1.text.trim(), o2.text.trim(), o3.text.trim(), o4.text.trim()]
-                  .where((o) => o.isNotEmpty).toList();
-              if (!options.contains(a2)) options.insert(0, a2);
-              await FirestoreService().saveAdminFinalQuestion(
-                  fieldId: fieldId, question: q2, correctAnswer: a2, options: options, docId: docId);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDirty ? _indigo : _sub,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: isDirty ? () async {
+                final options = [...curOpts];
+                if (!options.contains(a2)) options.insert(0, a2);
+                await FirestoreService().saveAdminFinalQuestion(
+                    fieldId: fieldId, question: q2, correctAnswer: a2, options: options, docId: docId);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(docId == null ? 'Exam question added.' : 'Exam question updated.'),
+                      backgroundColor: _green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } : null,
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      }),
     );
   }
 }
@@ -3261,90 +3538,93 @@ class _DetailStat extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. ACTIVITY SECTION — real-time feed
+// 5. ACTIVITY SECTION — admin actions feed
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ActivitySection extends StatefulWidget {
+class _ActivitySection extends StatelessWidget {
   const _ActivitySection();
-  @override
-  State<_ActivitySection> createState() => _ActivitySectionState();
-}
-
-class _ActivitySectionState extends State<_ActivitySection> {
-  String _filter = 'all'; // 'all' | 'today' | 'week'
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirestoreService().usersStream,
+      stream: FirestoreService().notificationsHistoryStream,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _indigo));
         }
-        final all = snap.data?.docs ?? [];
+        final docs = snap.data?.docs ?? [];
         final now = DateTime.now();
+        final startOfToday     = DateTime(now.year, now.month, now.day);
+        final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
+        final startOfWeek      = startOfToday.subtract(const Duration(days: 7));
 
-        final filtered = all.where((d) {
-          final lastSeen = (d.data()['lastSeen'] as Timestamp?)?.toDate();
-          if (lastSeen == null) return _filter == 'all';
-          final diff = now.difference(lastSeen);
-          if (_filter == 'today') return diff.inHours < 24;
-          if (_filter == 'week')  return diff.inDays < 7;
-          return true;
-        }).toList();
+        List<Map<String, dynamic>> todayItems     = [];
+        List<Map<String, dynamic>> yesterdayItems = [];
+        List<Map<String, dynamic>> weekItems      = [];
+        List<Map<String, dynamic>> earlierItems   = [];
+
+        for (final doc in docs) {
+          final d = doc.data();
+          final ts = (d['sentAt'] as Timestamp?)?.toDate();
+          if (ts == null) {
+            earlierItems.add(d);
+          } else if (ts.isAfter(startOfToday)) {
+            todayItems.add(d);
+          } else if (ts.isAfter(startOfYesterday)) {
+            yesterdayItems.add(d);
+          } else if (ts.isAfter(startOfWeek)) {
+            weekItems.add(d);
+          } else {
+            earlierItems.add(d);
+          }
+        }
 
         return Column(
           children: [
-            // Header
             Container(
               color: Colors.transparent,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      const Text('User Activity Feed',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _ink)),
-                      const Spacer(),
-                      _PulsingDot(color: _green),
-                      const SizedBox(width: 5),
-                      const Text('Live', style: TextStyle(fontSize: 11, color: _green, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Filter chips
-                  Row(
-                    children: [
-                      _FilterChip(label: 'All Users', value: 'all', current: _filter,
-                          onTap: () => setState(() => _filter = 'all')),
-                      const SizedBox(width: 8),
-                      _FilterChip(label: 'Today', value: 'today', current: _filter,
-                          onTap: () => setState(() => _filter = 'today')),
-                      const SizedBox(width: 8),
-                      _FilterChip(label: 'This Week', value: 'week', current: _filter,
-                          onTap: () => setState(() => _filter = 'week')),
-                      const Spacer(),
-                      Text('${filtered.length} users',
-                          style: TextStyle(fontSize: 11, color: _sub)),
-                    ],
-                  ),
+                  const Text('Admin Activity',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _ink)),
+                  const Spacer(),
+                  _PulsingDot(color: _green),
+                  const SizedBox(width: 5),
+                  const Text('Live', style: TextStyle(fontSize: 11, color: _green, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
-
-            // Feed
-            Expanded(
-              child: filtered.isEmpty
-                  ? _EmptyState(icon: Icons.timeline_outlined,
-                      message: 'No activity found\nfor the selected filter.')
-                  : ListView.builder(
-                      padding: EdgeInsets.fromLTRB(14, 8, 14,
-                          MediaQuery.of(ctx).viewPadding.bottom + 80),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) => _ActivityRow(doc: filtered[i]),
+            docs.isEmpty
+                ? Expanded(
+                    child: _EmptyState(
+                      icon: Icons.timeline_outlined,
+                      message: 'No admin activity yet.\nActivities appear here when you send notifications.',
                     ),
-            ),
+                  )
+                : Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(14, 4, 14, MediaQuery.of(ctx).viewPadding.bottom + 80),
+                      children: [
+                        if (todayItems.isNotEmpty) ...[
+                          _ActivityGroupHeader('Today'),
+                          ...todayItems.map((d) => _AdminActivityRow(data: d)),
+                        ],
+                        if (yesterdayItems.isNotEmpty) ...[
+                          _ActivityGroupHeader('Yesterday'),
+                          ...yesterdayItems.map((d) => _AdminActivityRow(data: d)),
+                        ],
+                        if (weekItems.isNotEmpty) ...[
+                          _ActivityGroupHeader('This Week'),
+                          ...weekItems.map((d) => _AdminActivityRow(data: d)),
+                        ],
+                        if (earlierItems.isNotEmpty) ...[
+                          _ActivityGroupHeader('Earlier'),
+                          ...earlierItems.map((d) => _AdminActivityRow(data: d)),
+                        ],
+                      ],
+                    ),
+                  ),
           ],
         );
       },
@@ -3352,173 +3632,88 @@ class _ActivitySectionState extends State<_ActivitySection> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label, value, current;
-  final VoidCallback onTap;
-  const _FilterChip({required this.label, required this.value, required this.current, required this.onTap});
+class _ActivityGroupHeader extends StatelessWidget {
+  final String label;
+  const _ActivityGroupHeader(this.label);
 
   @override
   Widget build(BuildContext context) {
-    final active = value == current;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: active ? const LinearGradient(
-            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ) : null,
-          color: active ? null : Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: active ? Colors.transparent : _border,
-            width: 0.8,
-          ),
-          boxShadow: active ? [
-            BoxShadow(color: _indigo.withValues(alpha: 0.35), blurRadius: 10),
-          ] : null,
-        ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 11, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? Colors.white : _sub,
-            )),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 10, 0, 6),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _sub, letterSpacing: 0.8),
       ),
     );
   }
 }
 
-class _ActivityRow extends StatelessWidget {
-  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
-  const _ActivityRow({required this.doc});
+class _AdminActivityRow extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const _AdminActivityRow({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final data    = doc.data();
-    final name    = data['displayName'] as String? ?? 'Unknown';
-    final email   = data['email'] as String? ?? '';
-    final quizzes = data['quizzesPassedTotal'] as int? ?? 0;
-    final streak  = data['streak'] as int? ?? 0;
-    final lastSeen = (data['lastSeen'] as Timestamp?)?.toDate();
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    final now = DateTime.now();
+    final title = data['title'] as String? ?? 'Notification';
+    final body  = data['body']  as String? ?? '';
+    final type  = data['type']  as String? ?? 'announcement';
+    final topic = data['topic'] as String? ?? 'all_users';
+    final ts    = (data['sentAt'] as Timestamp?)?.toDate();
 
-    // Recency color
-    Color dotColor = const Color(0xFF9CA3AF);
-    String timeLabel = 'Unknown';
-    if (lastSeen != null) {
-      final diff = now.difference(lastSeen);
-      timeLabel = _timeAgo(lastSeen);
-      if (diff.inHours < 1) dotColor = _green;
-      else if (diff.inHours < 24) dotColor = _blue;
-      else if (diff.inDays < 7) dotColor = _amber;
-      else dotColor = const Color(0xFF9CA3AF);
-    }
-
-    // Activity summary
-    final todayKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final todayCards = (data['dailyCards'] as Map<String, dynamic>?)?[todayKey] as int? ?? 0;
+    final (icon, color) = switch (type) {
+      'reminder'    => (Icons.alarm_rounded,          _green),
+      'new_content' => (Icons.auto_awesome_rounded,   _purple),
+      'alert'       => (Icons.warning_amber_rounded,  _amber),
+      _             => (Icons.campaign_rounded,        _blue),
+    };
 
     return _GlassCard(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar with live dot
-          Stack(
-            children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_indigo.withValues(alpha: 0.50), _violet.withValues(alpha: 0.30)],
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _indigo.withValues(alpha: 0.35), width: 1),
-                ),
-                child: Center(child: Text(initial,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
-              ),
-              Positioned(
-                right: 0, bottom: 0,
-                child: Container(
-                  width: 12, height: 12,
-                  decoration: BoxDecoration(
-                    color: dotColor, shape: BoxShape.circle,
-                    border: Border.all(color: _bg, width: 2),
-                    boxShadow: [BoxShadow(color: dotColor.withValues(alpha: 0.40), blurRadius: 4)],
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.notifications_active_rounded, size: 16, color: color),
           ),
           const SizedBox(width: 12),
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
-                Text(email, style: const TextStyle(fontSize: 10, color: _sub)),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 5,
-                  runSpacing: 4,
-                  children: [
-                    if (todayCards > 0)
-                      _MiniChip('📖 $todayCards today', _indigo.withValues(alpha: 0.20), _indigo),
-                    if (streak > 0)
-                      _MiniChip('🔥 $streak streak', _amber.withValues(alpha: 0.20), _amber),
-                    if (quizzes > 0)
-                      _MiniChip('✓ $quizzes quizzes', _green.withValues(alpha: 0.20), _green),
-                  ],
-                ),
+                Text('Notification sent', style: const TextStyle(fontSize: 10, color: _sub)),
+                const SizedBox(height: 2),
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(body, style: const TextStyle(fontSize: 10, color: _sub),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+                const SizedBox(height: 6),
+                Row(children: [
+                  Icon(icon, size: 11, color: color),
+                  const SizedBox(width: 4),
+                  Text(topic.replaceAll('_', ' '),
+                      style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
+                ]),
               ],
             ),
           ),
-          // Time
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                  color: dotColor, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: dotColor.withValues(alpha: 0.50), blurRadius: 4)],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(timeLabel, style: TextStyle(fontSize: 10, color: _sub)),
-            ],
-          ),
+          if (ts != null) ...[
+            const SizedBox(width: 8),
+            Text(_timeAgo(ts), style: const TextStyle(fontSize: 9, color: _sub)),
+          ],
         ],
       ),
     );
   }
 }
 
-class _MiniChip extends StatelessWidget {
-  final String label;
-  final Color bg, fg;
-  const _MiniChip(this.label, this.bg, this.fg);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: fg.withValues(alpha: 0.30), width: 0.8),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 9, color: fg, fontWeight: FontWeight.w700)),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED HELPERS
@@ -3685,7 +3880,8 @@ class _DialogField extends StatelessWidget {
   final TextEditingController ctrl;
   final String label, hint;
   final int maxLines;
-  const _DialogField({required this.ctrl, required this.label, required this.hint, this.maxLines = 1});
+  final ValueChanged<String>? onChanged;
+  const _DialogField({required this.ctrl, required this.label, required this.hint, this.maxLines = 1, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -3697,6 +3893,7 @@ class _DialogField extends StatelessWidget {
         TextField(
           controller: ctrl,
           maxLines: maxLines,
+          onChanged: onChanged,
           style: const TextStyle(fontSize: 13, color: _ink),
           decoration: InputDecoration(
             hintText: hint,
@@ -4112,12 +4309,6 @@ class _NotificationsSectionState extends State<_NotificationsSection> {
     ('advanced',     'Advanced'),
   ];
 
-  static const _templates = [
-    ('🔥 Study streak!', 'Don\'t break your streak. Complete today\'s flashcards now!', 'reminder'),
-    ('📚 New content added', 'Fresh study cards are available. Check out the latest additions!', 'new_content'),
-    ('🏆 Weekly challenge', 'This week\'s quiz challenge is live. Test your knowledge now!', 'announcement'),
-    ('⏰ Daily reminder', 'Your daily study session is waiting. 10 minutes a day keeps forgetting away!', 'reminder'),
-  ];
 
   @override
   void dispose() {
@@ -4182,49 +4373,6 @@ class _NotificationsSectionState extends State<_NotificationsSection> {
           ]),
         ]),
         const SizedBox(height: 18),
-
-        // ── Quick Templates ──────────────────────────────────────────────────
-        const Text('Quick Templates', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 86,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _templates.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, i) {
-              final (title, body, type) = _templates[i];
-              final typeData = _types.firstWhere((t) => t.$1 == type, orElse: () => _types[0]);
-              return GestureDetector(
-                onTap: () => setState(() {
-                  _titleCtrl.text = title;
-                  _bodyCtrl.text  = body;
-                  _type = type;
-                }),
-                child: Container(
-                  width: 160,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (typeData.$4).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: (typeData.$4).withValues(alpha: 0.25), width: 1),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(typeData.$2, size: 16, color: typeData.$4),
-                      const SizedBox(height: 6),
-                      Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ink), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 3),
-                      Text(body, style: TextStyle(fontSize: 9, color: _sub), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
 
         // ── Compose Form ─────────────────────────────────────────────────────
         _GlassCard(

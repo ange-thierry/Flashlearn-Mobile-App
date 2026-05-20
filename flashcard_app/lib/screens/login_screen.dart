@@ -209,12 +209,13 @@ class _LoginScreenState extends State<LoginScreen>
           SafeArea(
             bottom: false,
             child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 26, 0, 26, MediaQuery.of(context).viewPadding.bottom + 16,
               ),
               child: Column(
                 children: [
-                  SizedBox(height: size.height * 0.06),
+                  const SizedBox(height: 36),
 
                   // Logo
                   FadeTransition(
@@ -569,9 +570,9 @@ class _TitleBlock extends StatelessWidget {
         Text(
           'Master any subject, one card at a time.\nStudy smarter with adaptive flashcards.',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             color: const Color(0xFF1A1A2E).withValues(alpha: 0.55),
-            height: 1.6,
+            height: 1.5,
             fontWeight: FontWeight.w400,
             letterSpacing: 0.1,
           ),
@@ -592,7 +593,7 @@ class _StatsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(40),
@@ -608,34 +609,39 @@ class _StatsStrip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _statIcon(Icons.menu_book_rounded, '6', 'Subjects'),
-          _dot(),
-          _statIcon(Icons.style_rounded, '180+', 'Cards'),
-          _dot(),
-          _statIcon(Icons.star_rounded, '100%', 'Free'),
+          Icon(Icons.psychology_rounded, size: 16, color: _green700),
+          const SizedBox(width: 8),
+          Text(
+            'Sharpen your mind',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F5233),
+              letterSpacing: 0.1,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 3, height: 3,
+            decoration: BoxDecoration(
+              color: _green500.withValues(alpha: 0.40),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Icon(Icons.auto_stories_rounded, size: 14, color: _green700),
+          const SizedBox(width: 5),
+          Text(
+            'Learn smarter',
+            style: TextStyle(
+              fontSize: 12,
+              color: const Color(0xFF1A1A2E).withValues(alpha: 0.50),
+            ),
+          ),
         ],
       ),
     );
   }
-
-  Widget _statIcon(IconData icon, String val, String label) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 14, color: _green700),
-      const SizedBox(width: 5),
-      Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF0F5233))),
-      const SizedBox(width: 3),
-      Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF1A1A2E).withValues(alpha: 0.45))),
-    ],
-  );
-
-  Widget _dot() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 11),
-    child: Container(
-      width: 3, height: 3,
-      decoration: BoxDecoration(color: _green500.withValues(alpha: 0.30), shape: BoxShape.circle),
-    ),
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

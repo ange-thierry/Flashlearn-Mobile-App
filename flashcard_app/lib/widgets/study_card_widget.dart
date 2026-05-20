@@ -516,7 +516,7 @@ class _StudyCardWidgetState extends State<StudyCardWidget>
         ),
         alignment: Alignment.center,
         child: Text(
-          _answered == 'correct' ? '  Marked Correct' : '😕  Marked Wrong',
+          _answered == 'correct' ? '  Mastered' : '😕  Not Mastered',
           style: TextStyle(
             color: _answered == 'correct'
                 ? const Color(0xFFAAFFCC)
@@ -558,7 +558,7 @@ class _StudyCardWidgetState extends State<StudyCardWidget>
                       Text('😕', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 6),
                       Text(
-                        'Wrong',
+                        'Unmastered',
                         style: TextStyle(
                           color: Color(0xFFFFCCCC),
                           fontWeight: FontWeight.w700,
@@ -601,7 +601,7 @@ class _StudyCardWidgetState extends State<StudyCardWidget>
                       Text('✓', style: TextStyle(fontSize: 16, color: Color(0xFFAAFFCC))),
                       SizedBox(width: 6),
                       Text(
-                        'Correct',
+                        'Mastered',
                         style: TextStyle(
                           color: Color(0xFFAAFFCC),
                           fontWeight: FontWeight.w700,
@@ -652,8 +652,8 @@ class _StudyCardWidgetState extends State<StudyCardWidget>
                           ? 'Mark yourself after reading the answer'
                           : 'Tap the card to reveal the answer'
                       : answered == 'correct'
-                          ? ' Marked correct — great!'
-                          : '😕 Marked wrong — review it!',
+                          ? ' Mastered — great job!'
+                          : '😕 Not mastered yet — review it!',
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.white.withValues(alpha: 0.55),

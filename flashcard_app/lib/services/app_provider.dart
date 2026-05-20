@@ -186,6 +186,7 @@ class AppProvider extends ChangeNotifier {
   static const _kFieldFinals  = 'field_finals_v1';
   static const _kFieldLevels  = 'field_levels_v1';
   static const _kFullName     = 'full_name_v1';
+  static const _kDarkMode     = 'dark_mode_v1';
 
   // Unique ID for the signed-in user (Firebase UID > demo email > fallback)
   String get _uid {
@@ -263,6 +264,8 @@ class AppProvider extends ChangeNotifier {
 
     final fn = prefs.getString(_kFullNameUser);
     if (fn != null && fn.isNotEmpty) _fullName = fn;
+
+    _isDarkMode = prefs.getBool(_kDarkMode) ?? false;
 
     notifyListeners();
     // Sync to Firestore on every startup so admin can see all active users,
@@ -1072,9 +1075,11 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleDarkMode() {
+  Future<void> toggleDarkMode() async {
     _isDarkMode = !_isDarkMode;
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDarkMode, _isDarkMode);
   }
 
 }

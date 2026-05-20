@@ -18,7 +18,7 @@ class CertificateScreen extends StatelessWidget {
 
     if (cert == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF5F0E8),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),

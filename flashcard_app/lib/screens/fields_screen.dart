@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math' as math;
 import '../models/models.dart';
 import '../services/app_provider.dart';
+import '../services/firestore_service.dart';
 import '../data/fields_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notif_scaffold.dart';
@@ -78,8 +80,8 @@ class _FieldsScreenState extends State<FieldsScreen> {
       isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          maxChildSize: 0.88,
+          initialChildSize: 0.60,
+          maxChildSize: 0.92,
           minChildSize: 0.35,
           builder: (_, sc) => Container(
             decoration: const BoxDecoration(
@@ -100,7 +102,9 @@ class _FieldsScreenState extends State<FieldsScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 8, 0),
                   child: Row(
                     children: [
-                      const Text('Notifications',
+                      const Icon(Icons.notifications_rounded, size: 18, color: Color(0xFF1A1A2E)),
+                      const SizedBox(width: 8),
+                      const Text('Alerts',
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
                       const Spacer(),
                       StreamBuilder<List<AppNotification>>(
@@ -117,30 +121,142 @@ class _FieldsScreenState extends State<FieldsScreen> {
                   ),
                 ),
                 Expanded(
-                  child: StreamBuilder<List<AppNotification>>(
-                    stream: notif.notificationsStream,
-                    builder: (_, __) {
-                      final items = notif.notifications;
-                      if (items.isEmpty) {
-                        return const Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                  child: ListView(
+                    controller: sc,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: [
+                      // ── Admin Alerts from Firestore ──────────────────────
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirestoreService().notificationsHistoryStream,
+                        builder: (_, snap) {
+                          final adminDocs = snap.data?.docs ?? [];
+                          if (adminDocs.isEmpty) return const SizedBox.shrink();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.notifications_outlined, size: 48, color: Color(0xFF9A9895)),
-                              SizedBox(height: 12),
-                              Text('No notifications yet',
-                                  style: TextStyle(fontSize: 14, color: Color(0xFF9A9895))),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF16A34A).withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.30), width: 0.8),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.campaign_rounded, size: 11, color: Color(0xFF16A34A)),
+                                        SizedBox(width: 4),
+                                        Text('From Admin', style: TextStyle(fontSize: 10, color: Color(0xFF16A34A), fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
+                                ]),
+                              ),
+                              ...adminDocs.take(10).map((doc) {
+                                final d = doc.data();
+                                final title = d['title'] as String? ?? '';
+                                final body  = d['body']  as String? ?? '';
+                                final type  = d['type']  as String? ?? 'announcement';
+                                final ts    = (d['sentAt'] as Timestamp?)?.toDate();
+                                final (icon, color) = switch (type) {
+                                  'reminder'    => (Icons.alarm_rounded,         const Color(0xFF16A34A)),
+                                  'new_content' => (Icons.auto_awesome_rounded,  const Color(0xFF8B5CF6)),
+                                  'alert'       => (Icons.warning_amber_rounded, const Color(0xFFF59E0B)),
+                                  _ => (Icons.campaign_rounded, const Color(0xFF3B82F6)),
+                                };
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(13),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: color.withValues(alpha: 0.20), width: 0.8),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(9),
+                                        ),
+                                        child: Icon(icon, size: 15, color: color),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(title,
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E))),
+                                            if (body.isNotEmpty) ...[
+                                              const SizedBox(height: 3),
+                                              Text(body,
+                                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.4),
+                                                  maxLines: 3, overflow: TextOverflow.ellipsis),
+                                            ],
+                                            if (ts != null) ...[
+                                              const SizedBox(height: 5),
+                                              Text(_fmtTime(ts),
+                                                  style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                              const Divider(height: 24),
                             ],
-                          ),
-                        );
-                      }
-                      return NotificationPanel(
-                        notifications: items,
-                        onClearAll: () { notif.clearAll(); Navigator.pop(ctx); },
-                        onDismiss: notif.dismiss,
-                        onClose: () => Navigator.pop(ctx),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                      // ── Local app notifications ──────────────────────────
+                      StreamBuilder<List<AppNotification>>(
+                        stream: notif.notificationsStream,
+                        builder: (_, __) {
+                          final items = notif.notifications;
+                          if (items.isEmpty) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.notifications_outlined, size: 40, color: Color(0xFF9A9895)),
+                                    SizedBox(height: 10),
+                                    Text('No app notifications yet',
+                                        style: TextStyle(fontSize: 13, color: Color(0xFF9A9895))),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text('App Notifications',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                                        color: Colors.grey.shade500)),
+                              ),
+                              NotificationPanel(
+                                notifications: items,
+                                onClearAll: () { notif.clearAll(); Navigator.pop(ctx); },
+                                onDismiss: notif.dismiss,
+                                onClose: () => Navigator.pop(ctx),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -165,12 +281,17 @@ class _FieldsScreenState extends State<FieldsScreen> {
         final badges     = prov.achievements.where((a) => a.isUnlocked).length;
         final certs      = prov.fieldFinalsPassed.length;
 
+        final isDark = prov.isDarkMode;
+        final sheetBg = isDark ? const Color(0xFF161B22) : Colors.white;
+        final textColor = isDark ? const Color(0xFFF0F6FC) : const Color(0xFF1A1A2E);
+        final subColor  = isDark ? const Color(0xFF8B949E) : const Color(0xFF9A9895);
+
         return Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             padding: const EdgeInsets.fromLTRB(24, 14, 24, 32),
             child: Column(
@@ -179,7 +300,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
                 Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: isDark ? const Color(0xFF30363D) : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -194,11 +315,9 @@ class _FieldsScreenState extends State<FieldsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
+                Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: textColor)),
                 if (email.isNotEmpty)
-                  Text(email,
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                  Text(email, style: TextStyle(fontSize: 13, color: subColor)),
                 const SizedBox(height: 20),
                 // Stats row
                 Row(
@@ -233,6 +352,51 @@ class _FieldsScreenState extends State<FieldsScreen> {
                   ),
                   const SizedBox(height: 10),
                 ],
+                // Dark mode toggle row
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF0D1117)
+                        : const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF30363D)
+                          : const Color(0xFFBBF7D0),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        size: 18,
+                        color: isDark ? const Color(0xFF3FB950) : AppTheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Dark Mode',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      Switch.adaptive(
+                        value: isDark,
+                        onChanged: (_) {
+                          prov.toggleDarkMode();
+                          Navigator.pop(ctx);
+                        },
+                        activeTrackColor: AppTheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
                 // Action buttons
                 Row(
                   children: [
@@ -359,13 +523,15 @@ class _FieldsScreenState extends State<FieldsScreen> {
   // â"€â"€ LEFT SIDEBAR â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   Widget _sidebar(BuildContext context, AppProvider prov) {
     final name = prov.auth.displayName;
+    final isDark = prov.isDarkMode;
     return Container(
       width: 72,
       margin: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF161B22) : Colors.white,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+        border: isDark ? Border.all(color: const Color(0xFF30363D), width: 0.8) : null,
+        boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -427,10 +593,14 @@ class _FieldsScreenState extends State<FieldsScreen> {
   // â"€â"€ BOTTOM NAV â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   Widget _bottomNav(BuildContext context, AppProvider prov, {required int unreadCount}) {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    final isDark = prov.isDarkMode;
+    final navBg = isDark ? const Color(0xFF161B22) : Colors.white;
+    final navBorder = isDark ? const Color(0xFF30363D) : Colors.black.withValues(alpha: 0.06);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+        color: navBg,
+        border: Border(top: BorderSide(color: navBorder, width: isDark ? 0.8 : 0)),
+        boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
@@ -481,7 +651,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
                               size: 21,
                               color: isHome
                                   ? Colors.white
-                                  : const Color(0xFFB0AEB8),
+                                  : (isDark ? const Color(0xFF8B949E) : const Color(0xFFB0AEB8)),
                             ),
                           ),
                           if (isNotif && unreadCount > 0)
@@ -516,7 +686,7 @@ class _FieldsScreenState extends State<FieldsScreen> {
                           fontWeight: isHome ? FontWeight.w700 : FontWeight.w500,
                           color: isHome
                               ? AppTheme.primary
-                              : const Color(0xFFB0AEB8),
+                              : (isDark ? const Color(0xFF8B949E) : const Color(0xFFB0AEB8)),
                         ),
                       ),
                     ],
@@ -2287,9 +2457,14 @@ class _FlipFieldCardState extends State<_FlipFieldCard>
   }
 }
 
-
-
-
+String _fmtTime(DateTime dt) {
+  final diff = DateTime.now().difference(dt);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inHours < 1)  return '${diff.inMinutes}m ago';
+  if (diff.inDays < 1)   return '${diff.inHours}h ago';
+  if (diff.inDays < 7)   return '${diff.inDays}d ago';
+  return '${(diff.inDays / 7).floor()}w ago';
+}
 
 
 

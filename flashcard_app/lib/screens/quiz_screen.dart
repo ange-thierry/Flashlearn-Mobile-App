@@ -135,7 +135,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     if (!prov.isQuizMode || prov.quizQuestions.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF0FDF4),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(

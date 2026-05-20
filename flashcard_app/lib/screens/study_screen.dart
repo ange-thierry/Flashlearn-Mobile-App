@@ -213,7 +213,7 @@ class StudyScreen extends StatelessWidget {
                                 size: 12, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
-                              '$correctCount correct',
+                              '$correctCount mastered',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
