@@ -172,11 +172,15 @@ class StudyScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 7),
-                                Text(
-                                  field.name,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white.withValues(alpha: 0.75),
+                                Flexible(
+                                  child: Text(
+                                    field.name,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white.withValues(alpha: 0.75),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],

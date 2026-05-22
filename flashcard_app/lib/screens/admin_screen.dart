@@ -53,8 +53,8 @@ class _AdminScreenState extends State<AdminScreen>
     (Icons.dashboard_rounded,     Icons.dashboard_outlined,     'Overview'),
     (Icons.grid_view_rounded,     Icons.grid_view_outlined,     'Fields'),
     (Icons.library_books_rounded, Icons.library_books_outlined, 'Content'),
-    (Icons.timeline_rounded,      Icons.timeline_outlined,      'Activity'),
-    (Icons.notifications_rounded,   Icons.notifications_outlined,   'Alerts'),
+    (Icons.group_rounded,         Icons.group_outlined,         'Users'),
+    (Icons.notifications_rounded, Icons.notifications_outlined, 'Alerts'),
   ];
 
   @override
@@ -81,7 +81,7 @@ class _AdminScreenState extends State<AdminScreen>
       _OverviewSection(prov: prov),
       _FieldsSection(prov: prov),
       _ContentSection(prov: prov),
-      const _ActivitySection(),
+      const _UsersSection(),
       const _NotificationsSection(),
     ];
 
@@ -176,7 +176,7 @@ class _AdminAppBarState extends State<_AdminAppBar> {
     'Platform at a glance',
     'Manage study subjects',
     'Cards & questions',
-    'Admin activity log',
+    'All registered users',
     'Push notifications & alerts',
   ];
 
@@ -1329,10 +1329,12 @@ class _UserRowCompact extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
+                      Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                       Text(
                         lastSeen != null ? _timeAgo(lastSeen) : email,
                         style: const TextStyle(fontSize: 10, color: _sub),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -1395,7 +1397,47 @@ class _FieldsSection extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: EdgeInsets.fromLTRB(14, 0, 14, MediaQuery.of(context).viewPadding.bottom + 90),
-                children: prov.fields.map((f) => _FieldCard(field: f, prov: prov)).toList(),
+                children: [
+                  ...prov.fields.where((f) => !prov.isUserDeck(f.id)).map((f) => _FieldCard(field: f, prov: prov)),
+                  // User-created decks section
+                  if (prov.fields.any((f) => prov.isUserDeck(f.id))) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF16A34A), Color(0xFF1E3A5F)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.people_rounded, size: 14, color: Colors.white),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text('User-Created Decks',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${prov.fields.where((f) => prov.isUserDeck(f.id)).length}',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...prov.fields.where((f) => prov.isUserDeck(f.id)).map((f) => _FieldCard(field: f, prov: prov)),
+                  ],
+                ],
               ),
             ),
           ],
@@ -1458,18 +1500,18 @@ class _FieldsSection extends StatelessWidget {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: isDirty ? () {
+              onPressed: isDirty ? () async {
                 if (existing == null) {
-                  prov.addField(FieldModel(
+                  await prov.addField(FieldModel(
                     id: name.toLowerCase().replaceAll(' ', '_'),
                     name: name,
                     icon: icon.isEmpty ? 'subject' : icon,
-                    colorValue: 0xFF5B5FEF,
+                    colorValue: 0xFF16A34A,
                     desc: desc,
-                    gradientHex: const ['3730A3', '5B5FEF'],
+                    gradientHex: const ['16A34A', '1E3A5F'],
                   ));
                 } else {
-                  prov.updateField(FieldModel(
+                  await prov.updateField(FieldModel(
                     id: existing.id,
                     name: name,
                     icon: icon.isEmpty ? existing.icon : icon,
@@ -1478,8 +1520,8 @@ class _FieldsSection extends StatelessWidget {
                     gradientHex: existing.gradientHex,
                   ));
                 }
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(existing == null ? 'Field "$name" added.' : 'Field "$name" updated.'),
                     backgroundColor: _green,
@@ -1552,11 +1594,32 @@ class _FieldCardState extends State<_FieldCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.field.name,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(widget.field.name,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                              if (widget.field.createdBy != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.20),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('User Deck',
+                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white)),
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 2),
-                          Text(widget.field.desc,
-                              style: TextStyle(fontSize: 11, color: _sub)),
+                          if (widget.field.createdByName != null && widget.field.createdBy != null)
+                            Text('by ${widget.field.createdByName}',
+                                style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.65)),
+                                maxLines: 1, overflow: TextOverflow.ellipsis)
+                          else
+                            Text(widget.field.desc, style: TextStyle(fontSize: 11, color: _sub)),
                           const SizedBox(height: 7),
                           Wrap(
                             spacing: 5,
@@ -1640,8 +1703,8 @@ class _FieldCardState extends State<_FieldCard> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: isDirty ? () {
-                widget.prov.updateField(FieldModel(
+              onPressed: isDirty ? () async {
+                await widget.prov.updateField(FieldModel(
                   id: widget.field.id,
                   name: name,
                   icon: icon.isEmpty ? initIcon : icon,
@@ -1649,8 +1712,8 @@ class _FieldCardState extends State<_FieldCard> {
                   desc: desc.isEmpty ? initDesc : desc,
                   gradientHex: widget.field.gradientHex,
                 ));
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Field "$name" updated.'),
                     backgroundColor: _green,
@@ -1679,7 +1742,10 @@ class _FieldCardState extends State<_FieldCard> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: _red, foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () { widget.prov.deleteField(widget.field.id); Navigator.pop(ctx); },
+            onPressed: () async {
+              await widget.prov.deleteField(widget.field.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
             child: const Text('Delete'),
           ),
         ],
@@ -2671,6 +2737,7 @@ class _UserCard extends StatelessWidget {
     final badges   = data['badgesUnlocked'] as int? ?? 0;
     final certs    = data['certifications'] as int? ?? 0;
     final lastSeen = (data['lastSeen'] as Timestamp?)?.toDate();
+    final joinedAt = (data['joinedAt'] as Timestamp?)?.toDate();
     final suspended = data['suspended'] as bool? ?? false;
     final initial  = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
@@ -2772,9 +2839,13 @@ class _UserCard extends StatelessWidget {
                                 ),
                             ],
                           ),
-                          Text(email, style: TextStyle(fontSize: 10, color: _sub)),
+                          Text(email, style: TextStyle(fontSize: 10, color: _sub),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                           if (lastSeen != null)
                             Text('Last active ${_timeAgo(lastSeen)}',
+                                style: TextStyle(fontSize: 10, color: _sub)),
+                          if (joinedAt != null)
+                            Text('Joined ${_formatDate(joinedAt)}',
                                 style: TextStyle(fontSize: 10, color: _sub)),
                         ],
                       ),
@@ -2823,36 +2894,42 @@ class _UserCard extends StatelessWidget {
                       Text('Daily cards — last 7 days',
                           style: TextStyle(fontSize: 10, color: _sub, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 6),
+                      // Bar area — bounded height so bars never overflow
                       SizedBox(
-                        height: 36,
+                        height: 24,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: last7.asMap().entries.map((e) {
                             final val = e.value;
                             final frac = maxVal > 0 ? val / maxVal : 0.0;
-                            const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
                             return Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 2),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    AnimatedContainer(
-                                      duration: const Duration(milliseconds: 400),
-                                      height: 24 * frac + (val > 0 ? 4 : 2),
-                                      decoration: BoxDecoration(
-                                        color: val > 0 ? _green : Colors.white.withValues(alpha: 0.06),
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(days[e.key], style: const TextStyle(fontSize: 8, color: _sub)),
-                                  ],
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 400),
+                                  height: (20 * frac + (val > 0 ? 4 : 2)).clamp(2.0, 24.0),
+                                  decoration: BoxDecoration(
+                                    color: val > 0 ? _green : Colors.white.withValues(alpha: 0.06),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
                                 ),
                               ),
                             );
                           }).toList(),
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Day labels — separate row, outside the bounded bar area
+                      Row(
+                        children: List.generate(7, (i) {
+                          const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                          return Expanded(
+                            child: Center(
+                              child: Text(days[i],
+                                  style: const TextStyle(fontSize: 8, color: _sub)),
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -3052,6 +3129,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
     final badges    = _data['badgesUnlocked'] as int? ?? 0;
     final certs     = _data['certifications'] as int? ?? 0;
     final lastSeen  = (_data['lastSeen'] as Timestamp?)?.toDate();
+    final joinedAt  = (_data['joinedAt'] as Timestamp?)?.toDate();
     final initial   = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final suspended = _data['suspended'] as bool? ?? false;
 
@@ -3137,6 +3215,11 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     Text('Last active: ${_timeAgo(lastSeen)}',
                         style: const TextStyle(fontSize: 11, color: _sub)),
                   ],
+                  if (joinedAt != null) ...[
+                    const SizedBox(height: 2),
+                    Text('Joined: ${_formatDate(joinedAt)}',
+                        style: const TextStyle(fontSize: 11, color: _sub)),
+                  ],
                   if (suspended) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -3196,8 +3279,25 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   const Text('DAILY ACTIVITY (LAST 7 DAYS)',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _sub, letterSpacing: 0.8)),
                   const SizedBox(height: 14),
+                  // Value labels above bars
+                  Row(
+                    children: last7.asMap().entries.map((e) {
+                      final val = e.value;
+                      return Expanded(
+                        child: Center(
+                          child: val > 0
+                              ? Text('$val',
+                                  style: const TextStyle(
+                                      fontSize: 8, fontWeight: FontWeight.w700, color: _green))
+                              : const SizedBox.shrink(),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 2),
+                  // Bar area — bounded height
                   SizedBox(
-                    height: 80,
+                    height: 56,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: last7.asMap().entries.map((e) {
@@ -3206,37 +3306,37 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                if (val > 0)
-                                  Text('$val',
-                                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: _green)),
-                                const SizedBox(height: 2),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 500),
-                                  height: 56 * frac + (val > 0 ? 4 : 2),
-                                  decoration: BoxDecoration(
-                                    gradient: val > 0
-                                        ? const LinearGradient(
-                                            colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                          )
-                                        : null,
-                                    color: val > 0 ? null : const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(days[e.key].substring(0, 2),
-                                    style: const TextStyle(fontSize: 9, color: _sub)),
-                              ],
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 500),
+                              height: (52 * frac + (val > 0 ? 4 : 2)).clamp(2.0, 56.0),
+                              decoration: BoxDecoration(
+                                gradient: val > 0
+                                    ? const LinearGradient(
+                                        colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                      )
+                                    : null,
+                                color: val > 0 ? null : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ),
                         );
                       }).toList(),
                     ),
+                  ),
+                  const SizedBox(height: 5),
+                  // Day labels — separate row below bars
+                  Row(
+                    children: last7.asMap().entries.map((e) {
+                      return Expanded(
+                        child: Center(
+                          child: Text(days[e.key].substring(0, 2),
+                              style: const TextStyle(fontSize: 9, color: _sub)),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -3541,86 +3641,185 @@ class _DetailStat extends StatelessWidget {
 // 5. ACTIVITY SECTION — admin actions feed
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Activity event data class ─────────────────────────────────────────────────
+class _ActivityEvent {
+  final String name, initial, type, title, subtitle;
+  final DateTime date;
+  const _ActivityEvent({
+    required this.name, required this.initial, required this.type,
+    required this.title, required this.subtitle, required this.date,
+  });
+}
+
 class _ActivitySection extends StatelessWidget {
   const _ActivitySection();
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirestoreService().notificationsHistoryStream,
+      stream: FirestoreService().usersStream,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: _indigo));
         }
+
         final docs = snap.data?.docs ?? [];
-        final now = DateTime.now();
+        final now  = DateTime.now();
+        final events = <_ActivityEvent>[];
+
+        for (final doc in docs) {
+          final data    = doc.data();
+          final name    = data['displayName'] as String? ?? 'Unknown';
+          final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+          final lastSeen = (data['lastSeen'] as Timestamp?)?.toDate();
+
+          // ── Quiz events (from recentQuizzes) ─────────────────────────────
+          final recentQuizzes = List<Map<String, dynamic>>.from(
+            (data['recentQuizzes'] as List? ?? [])
+                .map((e) => Map<String, dynamic>.from(e as Map)),
+          );
+          for (final quiz in recentQuizzes.take(5)) {
+            final dateStr = quiz['date'] as String? ?? '';
+            final date    = DateTime.tryParse(dateStr);
+            if (date == null) continue;
+            final passed  = quiz['passed'] as bool? ?? false;
+            final pct     = (quiz['pct'] as num?)?.toInt() ?? 0;
+            final fieldId = quiz['field'] as String? ?? 'unknown';
+            final level   = quiz['level'] as String? ?? 'easy';
+            final isFinal = level == 'final';
+            events.add(_ActivityEvent(
+              name: name, initial: initial,
+              type: passed ? 'quiz_pass' : 'quiz_fail',
+              title: '${name.split(' ').first} ${isFinal ? 'took Final Exam' : '${passed ? 'passed' : 'attempted'} $level quiz'}',
+              subtitle: '${fieldId.replaceAll('_', ' ')} · $pct%',
+              date: date,
+            ));
+          }
+
+          // ── Daily card study events (last 7 days) ─────────────────────────
+          final dailyCards = data['dailyCards'] as Map<String, dynamic>? ?? {};
+          for (int i = 0; i < 7; i++) {
+            final d   = now.subtract(Duration(days: i));
+            final key = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+            final cnt = (dailyCards[key] as num?)?.toInt() ?? 0;
+            if (cnt > 0) {
+              events.add(_ActivityEvent(
+                name: name, initial: initial,
+                type: 'study',
+                title: '${name.split(' ').first} studied $cnt card${cnt == 1 ? '' : 's'}',
+                subtitle: i == 0 ? 'Today' : i == 1 ? 'Yesterday' : '${i}d ago',
+                date: DateTime(d.year, d.month, d.day, 20),
+              ));
+            }
+          }
+
+          // ── Certificate events ────────────────────────────────────────────
+          final fieldFinalsPassed =
+              List<String>.from(data['fieldFinalsPassed'] as List? ?? []);
+          for (final fId in fieldFinalsPassed) {
+            events.add(_ActivityEvent(
+              name: name, initial: initial,
+              type: 'cert',
+              title: '${name.split(' ').first} earned a certificate',
+              subtitle: fId.replaceAll('_', ' '),
+              date: lastSeen?.subtract(const Duration(hours: 1)) ??
+                  now.subtract(const Duration(days: 7)),
+            ));
+          }
+
+          // ── Level completion events ───────────────────────────────────────
+          final rawLevels =
+              data['fieldCompletedLevels'] as Map<String, dynamic>? ?? {};
+          final completedLevels = rawLevels.map(
+              (k, v) => MapEntry(k, List<String>.from(v as List? ?? [])));
+          int lvlOffset = 2;
+          for (final entry in completedLevels.entries) {
+            for (final level in entry.value) {
+              events.add(_ActivityEvent(
+                name: name, initial: initial,
+                type: 'level',
+                title: '${name.split(' ').first} completed $level level',
+                subtitle: entry.key.replaceAll('_', ' '),
+                date: lastSeen?.subtract(Duration(hours: lvlOffset)) ??
+                    now.subtract(const Duration(days: 3)),
+              ));
+              lvlOffset += 2;
+            }
+          }
+        }
+
+        // Sort most-recent first
+        events.sort((a, b) => b.date.compareTo(a.date));
+
+        // Group by period
         final startOfToday     = DateTime(now.year, now.month, now.day);
         final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
         final startOfWeek      = startOfToday.subtract(const Duration(days: 7));
 
-        List<Map<String, dynamic>> todayItems     = [];
-        List<Map<String, dynamic>> yesterdayItems = [];
-        List<Map<String, dynamic>> weekItems      = [];
-        List<Map<String, dynamic>> earlierItems   = [];
-
-        for (final doc in docs) {
-          final d = doc.data();
-          final ts = (d['sentAt'] as Timestamp?)?.toDate();
-          if (ts == null) {
-            earlierItems.add(d);
-          } else if (ts.isAfter(startOfToday)) {
-            todayItems.add(d);
-          } else if (ts.isAfter(startOfYesterday)) {
-            yesterdayItems.add(d);
-          } else if (ts.isAfter(startOfWeek)) {
-            weekItems.add(d);
-          } else {
-            earlierItems.add(d);
-          }
-        }
+        final todayItems     = events.where((e) => e.date.isAfter(startOfToday)).toList();
+        final yesterdayItems = events.where((e) =>
+            e.date.isAfter(startOfYesterday) && !e.date.isAfter(startOfToday)).toList();
+        final weekItems  = events.where((e) =>
+            e.date.isAfter(startOfWeek) && !e.date.isAfter(startOfYesterday)).toList();
+        final earlierItems = events.where((e) => !e.date.isAfter(startOfWeek)).toList();
 
         return Column(
           children: [
+            // Header
             Container(
               color: Colors.transparent,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Row(
                 children: [
-                  const Text('Admin Activity',
+                  const Text('User Activity',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _ink)),
                   const Spacer(),
                   _PulsingDot(color: _green),
                   const SizedBox(width: 5),
-                  const Text('Live', style: TextStyle(fontSize: 11, color: _green, fontWeight: FontWeight.w700)),
+                  const Text('Live',
+                      style: TextStyle(fontSize: 11, color: _green, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
-            docs.isEmpty
+            // Summary chips
+            if (docs.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Row(
+                  children: [
+                    _ActivitySummaryChip(Icons.group_rounded, '${docs.length} users', _blue),
+                    const SizedBox(width: 8),
+                    _ActivitySummaryChip(Icons.timeline_rounded, '${events.length} events', _green),
+                  ],
+                ),
+              ),
+            events.isEmpty
                 ? Expanded(
                     child: _EmptyState(
                       icon: Icons.timeline_outlined,
-                      message: 'No admin activity yet.\nActivities appear here when you send notifications.',
+                      message: 'No user activity yet.\nActivity appears here as users interact with the app.',
                     ),
                   )
                 : Expanded(
                     child: ListView(
-                      padding: EdgeInsets.fromLTRB(14, 4, 14, MediaQuery.of(ctx).viewPadding.bottom + 80),
+                      padding: EdgeInsets.fromLTRB(14, 0, 14,
+                          MediaQuery.of(ctx).viewPadding.bottom + 80),
                       children: [
                         if (todayItems.isNotEmpty) ...[
                           _ActivityGroupHeader('Today'),
-                          ...todayItems.map((d) => _AdminActivityRow(data: d)),
+                          ...todayItems.map((e) => _UserActivityRow(event: e)),
                         ],
                         if (yesterdayItems.isNotEmpty) ...[
                           _ActivityGroupHeader('Yesterday'),
-                          ...yesterdayItems.map((d) => _AdminActivityRow(data: d)),
+                          ...yesterdayItems.map((e) => _UserActivityRow(event: e)),
                         ],
                         if (weekItems.isNotEmpty) ...[
                           _ActivityGroupHeader('This Week'),
-                          ...weekItems.map((d) => _AdminActivityRow(data: d)),
+                          ...weekItems.map((e) => _UserActivityRow(event: e)),
                         ],
                         if (earlierItems.isNotEmpty) ...[
                           _ActivityGroupHeader('Earlier'),
-                          ...earlierItems.map((d) => _AdminActivityRow(data: d)),
+                          ...earlierItems.map((e) => _UserActivityRow(event: e)),
                         ],
                       ],
                     ),
@@ -3642,72 +3841,106 @@ class _ActivityGroupHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 10, 0, 6),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _sub, letterSpacing: 0.8),
+        style: const TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w800,
+            color: _sub, letterSpacing: 0.8),
       ),
     );
   }
 }
 
-class _AdminActivityRow extends StatelessWidget {
-  final Map<String, dynamic> data;
-  const _AdminActivityRow({required this.data});
+class _ActivitySummaryChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _ActivitySummaryChip(this.icon, this.label, this.color);
 
   @override
   Widget build(BuildContext context) {
-    final title = data['title'] as String? ?? 'Notification';
-    final body  = data['body']  as String? ?? '';
-    final type  = data['type']  as String? ?? 'announcement';
-    final topic = data['topic'] as String? ?? 'all_users';
-    final ts    = (data['sentAt'] as Timestamp?)?.toDate();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
 
-    final (icon, color) = switch (type) {
-      'reminder'    => (Icons.alarm_rounded,          _green),
-      'new_content' => (Icons.auto_awesome_rounded,   _purple),
-      'alert'       => (Icons.warning_amber_rounded,  _amber),
-      _             => (Icons.campaign_rounded,        _blue),
+class _UserActivityRow extends StatelessWidget {
+  final _ActivityEvent event;
+  const _UserActivityRow({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color) = switch (event.type) {
+      'quiz_pass' => (Icons.check_circle_rounded,      _green),
+      'quiz_fail' => (Icons.cancel_rounded,             _amber),
+      'study'     => (Icons.menu_book_rounded,          _blue),
+      'cert'      => (Icons.school_rounded,             const Color(0xFF06B6D4)),
+      'level'     => (Icons.emoji_events_rounded,       _purple),
+      _           => (Icons.timeline_rounded,           _grey),
     };
 
     return _GlassCard(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // User avatar
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_indigo.withValues(alpha: 0.55), _violet.withValues(alpha: 0.35)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(event.initial,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                      color: Colors.white)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Activity icon
+          Container(
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.notifications_active_rounded, size: 16, color: color),
+            child: Icon(icon, size: 13, color: color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          // Text
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Notification sent', style: const TextStyle(fontSize: 10, color: _sub)),
+                Text(event.title,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: _ink)),
                 const SizedBox(height: 2),
-                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
-                if (body.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(body, style: const TextStyle(fontSize: 10, color: _sub),
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
-                ],
-                const SizedBox(height: 6),
-                Row(children: [
-                  Icon(icon, size: 11, color: color),
-                  const SizedBox(width: 4),
-                  Text(topic.replaceAll('_', ' '),
-                      style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w600)),
-                ]),
+                Text(event.subtitle,
+                    style: const TextStyle(fontSize: 10, color: _sub)),
               ],
             ),
           ),
-          if (ts != null) ...[
-            const SizedBox(width: 8),
-            Text(_timeAgo(ts), style: const TextStyle(fontSize: 9, color: _sub)),
-          ],
+          const SizedBox(width: 6),
+          Text(_timeAgo(event.date),
+              style: const TextStyle(fontSize: 9, color: _sub)),
         ],
       ),
     );
@@ -4367,10 +4600,10 @@ class _NotificationsSectionState extends State<_NotificationsSection> {
             child: const Icon(Icons.campaign_rounded, color: _blue, size: 18),
           ),
           const SizedBox(width: 10),
-          const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Push Notifications', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _ink)),
-            Text('Send announcements to learners', style: TextStyle(fontSize: 11, color: _sub)),
-          ]),
+          Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Push Notifications', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _ink)),
+            const Text('Send announcements to learners', style: TextStyle(fontSize: 11, color: _sub)),
+          ])),
         ]),
         const SizedBox(height: 18),
 
@@ -4657,4 +4890,10 @@ String _timeAgo(DateTime dt) {
   if (diff.inDays < 1)   return '${diff.inHours}h ago';
   if (diff.inDays < 7)   return '${diff.inDays}d ago';
   return '${(diff.inDays / 7).floor()}w ago';
+}
+
+String _formatDate(DateTime dt) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                   'Jul','Aug','Sep','Oct','Nov','Dec'];
+  return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
 }

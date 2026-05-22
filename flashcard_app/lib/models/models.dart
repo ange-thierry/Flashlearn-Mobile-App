@@ -6,6 +6,8 @@ class FieldModel {
   final int colorValue;
   final String desc;
   final List<String> gradientHex;
+  final String? createdBy;      // uid of the user who created this deck (null = built-in/admin)
+  final String? createdByName;  // display name of creator
 
   const FieldModel({
     required this.id,
@@ -14,6 +16,8 @@ class FieldModel {
     required this.colorValue,
     required this.desc,
     required this.gradientHex,
+    this.createdBy,
+    this.createdByName,
   });
 
   factory FieldModel.fromMap(Map<String, dynamic> map) => FieldModel(
@@ -23,6 +27,8 @@ class FieldModel {
         colorValue: map['colorValue'],
         desc: map['desc'],
         gradientHex: List<String>.from(map['gradientHex'] ?? []),
+        createdBy: map['createdBy'] as String?,
+        createdByName: map['createdByName'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -32,6 +38,8 @@ class FieldModel {
         'colorValue': colorValue,
         'desc': desc,
         'gradientHex': gradientHex,
+        if (createdBy != null) 'createdBy': createdBy,
+        if (createdByName != null) 'createdByName': createdByName,
       };
 }
 

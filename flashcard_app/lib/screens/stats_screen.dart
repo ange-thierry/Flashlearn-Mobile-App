@@ -203,23 +203,59 @@ class _StatsScreenState extends State<StatsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header row
                       Row(
                         children: [
                           const Icon(Icons.bar_chart_rounded, size: 16, color: AppTheme.primary),
                           const SizedBox(width: 6),
-                          const Text('Daily Cards Studied', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F0E17))),
+                          const Text(
+                            'Daily Cards Studied',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F0E17),
+                            ),
+                          ),
                           const Spacer(),
-                          Text('Total: $cards', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                          Text(
+                            'Total: $cards',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
+
+                      // ── Value labels row (outside the bar SizedBox — no overflow) ──
+                      Row(
+                        children: last7.asMap().entries.map((e) {
+                          final val     = e.value;
+                          final isToday = e.key == 6;
+                          return Expanded(
+                            child: Center(
+                              child: Text(
+                                val > 0 ? '$val' : '',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: isToday
+                                      ? AppTheme.primary
+                                      : const Color(0xFF7C4DFF),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // ── Bars + day labels (fixed height, no text overflow) ──
                       SizedBox(
-                        height: 90,
+                        height: 86,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: last7.asMap().entries.map((e) {
-                            final val  = e.value;
-                            final frac = val / maxBar;
+                            final val     = e.value;
+                            final frac    = val / maxBar;
                             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
                             final isToday = e.key == 6;
                             return Expanded(
@@ -228,21 +264,20 @@ class _StatsScreenState extends State<StatsScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    if (val > 0)
-                                      Text('$val', style: TextStyle(
-                                        fontSize: 9, fontWeight: FontWeight.w700,
-                                        color: isToday ? AppTheme.primary : const Color(0xFF7C4DFF),
-                                      )),
-                                    const SizedBox(height: 2),
+                                    // Bar — clamped so it never exceeds the container
                                     AnimatedContainer(
                                       duration: const Duration(milliseconds: 500),
-                                      height: 64 * frac + (val > 0 ? 4 : 2),
+                                      height: (60.0 * frac + (val > 0 ? 4.0 : 2.0))
+                                          .clamp(2.0, 64.0),
                                       decoration: BoxDecoration(
                                         gradient: val > 0
                                             ? LinearGradient(
                                                 colors: isToday
                                                     ? [AppTheme.primary, AppTheme.accent]
-                                                    : [const Color(0xFF5B5FEF), const Color(0xFF7C4DFF)],
+                                                    : [
+                                                        const Color(0xFF5B5FEF),
+                                                        const Color(0xFF7C4DFF),
+                                                      ],
                                                 begin: Alignment.topCenter,
                                                 end: Alignment.bottomCenter,
                                               )
@@ -252,12 +287,17 @@ class _StatsScreenState extends State<StatsScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 6),
+                                    // Day label
                                     Text(
                                       dayLabels[e.key],
                                       style: TextStyle(
                                         fontSize: 10,
-                                        fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                                        color: isToday ? AppTheme.primary : const Color(0xFF9CA3AF),
+                                        fontWeight: isToday
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                        color: isToday
+                                            ? AppTheme.primary
+                                            : const Color(0xFF9CA3AF),
                                       ),
                                     ),
                                   ],

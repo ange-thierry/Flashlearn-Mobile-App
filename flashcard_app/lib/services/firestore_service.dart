@@ -27,7 +27,9 @@ class FirestoreService {
     List<Map<String, dynamic>> recentQuizzes = const [],
   }) async {
     try {
-      await _db.collection('users').doc(uid).set({
+      final ref = _db.collection('users').doc(uid);
+      final doc = await ref.get();
+      final data = <String, dynamic>{
         'uid': uid,
         'displayName': displayName,
         'email': email,
@@ -41,7 +43,12 @@ class FirestoreService {
         'fieldCompletedLevels': fieldCompletedLevels.map((k, v) => MapEntry(k, v)),
         'recentQuizzes': recentQuizzes.take(10).toList(),
         'lastSeen': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      };
+      // Only set joinedAt the first time the document is created.
+      if (!doc.exists) {
+        data['joinedAt'] = FieldValue.serverTimestamp();
+      }
+      await ref.set(data, SetOptions(merge: true));
     } catch (_) {
       // silent — don't crash if offline
     }
@@ -67,6 +74,52 @@ class FirestoreService {
   Future<void> setUserSuspended(String uid, {required bool suspended}) async {
     try {
       await _db.collection('users').doc(uid).update({'suspended': suspended});
+    } catch (_) {}
+  }
+
+  /// Real-time stream of the `suspended` boolean for a specific user.
+  /// Emits `false` when the field is absent (e.g. new accounts).
+  Stream<bool> userSuspendedStream(String uid) =>
+      _db.collection('users').doc(uid).snapshots().map(
+        (snap) => (snap.data()?['suspended'] as bool?) ?? false,
+      );
+
+  // ── Admin-created Fields ─────────────────────────────────────────────────────
+
+  /// Stream of all admin-created fields, ordered by creation time.
+  Stream<QuerySnapshot<Map<String, dynamic>>> get adminFieldsStream =>
+      _db.collection('admin_fields').snapshots();
+
+  /// Save (create or update) an admin-created field.
+  Future<void> saveAdminField({
+    required String id,
+    required String name,
+    required String icon,
+    required String desc,
+    required int colorValue,
+    required List<String> gradientHex,
+  }) async {
+    try {
+      final ref = _db.collection('admin_fields').doc(id);
+      final snap = await ref.get();
+      final data = <String, dynamic>{
+        'id': id,
+        'name': name,
+        'icon': icon,
+        'desc': desc,
+        'colorValue': colorValue,
+        'gradientHex': gradientHex,
+      };
+      if (!snap.exists) {
+        data['createdAt'] = DateTime.now().millisecondsSinceEpoch;
+      }
+      await ref.set(data, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  Future<void> deleteAdminField(String fieldId) async {
+    try {
+      await _db.collection('admin_fields').doc(fieldId).delete();
     } catch (_) {}
   }
 
@@ -252,6 +305,45 @@ class FirestoreService {
         'fieldCompletedLevels': {},
         'recentQuizzes': [],
       });
+    } catch (_) {}
+  }
+
+  // ── User-created Decks ─────────────────────────────────────────────────────
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> get userDecksStream =>
+      _db.collection('user_decks').snapshots();
+
+  Future<void> saveUserDeck({
+    required String id,
+    required String name,
+    required String icon,
+    required String desc,
+    required int colorValue,
+    required List<String> gradientHex,
+    required String createdBy,
+    String createdByName = '',
+  }) async {
+    try {
+      final ref = _db.collection('user_decks').doc(id);
+      final snap = await ref.get();
+      final data = <String, dynamic>{
+        'id': id,
+        'name': name,
+        'icon': icon,
+        'desc': desc,
+        'colorValue': colorValue,
+        'gradientHex': gradientHex,
+        'createdBy': createdBy,
+        'createdByName': createdByName,
+      };
+      if (!snap.exists) data['createdAt'] = DateTime.now().millisecondsSinceEpoch;
+      await ref.set(data, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  Future<void> deleteUserDeck(String deckId) async {
+    try {
+      await _db.collection('user_decks').doc(deckId).delete();
     } catch (_) {}
   }
 }

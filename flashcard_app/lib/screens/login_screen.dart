@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _logoFade;
   late Animation<Offset> _titleSlide;
   late Animation<double> _titleFade;
-  late Animation<double> _statsFade;
   late Animation<double> _featuresFade;
   late Animation<double> _ctaFade;
 
@@ -64,9 +63,6 @@ class _LoginScreenState extends State<LoginScreen>
     _titleFade = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _entranceCtrl,
             curve: const Interval(0.26, 0.56)));
-    _statsFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _entranceCtrl,
-            curve: const Interval(0.42, 0.64)));
     _featuresFade = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _entranceCtrl,
             curve: const Interval(0.56, 0.78)));
@@ -217,7 +213,6 @@ class _LoginScreenState extends State<LoginScreen>
                 children: [
                   const SizedBox(height: 36),
 
-                  // Logo
                   FadeTransition(
                     opacity: _logoFade,
                     child: ScaleTransition(
@@ -239,13 +234,6 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 18),
-
-                  FadeTransition(
-                    opacity: _statsFade,
-                    child: const _StatsStrip(),
-                  ),
-
                   const SizedBox(height: 26),
 
                   FadeTransition(
@@ -253,11 +241,18 @@ class _LoginScreenState extends State<LoginScreen>
                     child: const _FeatureRow(),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
 
                   FadeTransition(
                     opacity: _featuresFade,
-                    child: const _TrustRow(),
+                    child: const _SubjectChips(),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  FadeTransition(
+                    opacity: _featuresFade,
+                    child: const _QuoteRow(),
                   ),
 
                   const SizedBox(height: 30),
@@ -419,7 +414,7 @@ class _Background extends StatelessWidget {
             ),
           ),
         ),
-        // Purple glow — top right
+        // Green glow — top right
         Positioned(
           top: -size.height * 0.08,
           right: -size.width * 0.18,
@@ -435,7 +430,7 @@ class _Background extends StatelessWidget {
             ),
           ),
         ),
-        // Soft indigo glow — bottom left
+        // Soft green glow — bottom left
         Positioned(
           bottom: -size.height * 0.08,
           left: -size.width * 0.12,
@@ -584,65 +579,8 @@ class _TitleBlock extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STATS STRIP
+// LEARN STRIP  — static study facts pill
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _StatsStrip extends StatelessWidget {
-  const _StatsStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: _green500.withValues(alpha: 0.20), width: 0.8),
-        boxShadow: [
-          BoxShadow(
-            color: _green500.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.psychology_rounded, size: 16, color: _green700),
-          const SizedBox(width: 8),
-          Text(
-            'Sharpen your mind',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F5233),
-              letterSpacing: 0.1,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 3, height: 3,
-            decoration: BoxDecoration(
-              color: _green500.withValues(alpha: 0.40),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Icon(Icons.auto_stories_rounded, size: 14, color: _green700),
-          const SizedBox(width: 5),
-          Text(
-            'Learn smarter',
-            style: TextStyle(
-              fontSize: 12,
-              color: const Color(0xFF1A1A2E).withValues(alpha: 0.50),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEATURE ROW
@@ -713,52 +651,164 @@ class _FeatureRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TRUST ROW
+// SUBJECT CHIPS  — static list of available study subjects
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TrustRow extends StatelessWidget {
-  const _TrustRow();
+class _SubjectChips extends StatelessWidget {
+  const _SubjectChips();
 
-  static const _avatarColors = [
-    Color(0xFF2EA86B), Color(0xFF1565C0), Color(0xFFCC6600),
-    Color(0xFF7B1FA2), Color(0xFF1B7C4A),
+  static const _subjects = [
+    (Icons.calculate_rounded,    'Mathematics',      Color(0xFF5C4E8A), Color(0xFF2D1B69)),
+    (Icons.science_rounded,      'Science',          Color(0xFF1A6B4A), Color(0xFF0D3D2A)),
+    (Icons.account_balance_rounded, 'History',       Color(0xFF8B3A1A), Color(0xFF4A1800)),
+    (Icons.public_rounded,       'Geography',        Color(0xFF1A4F8B), Color(0xFF0D2A50)),
+    (Icons.menu_book_rounded,    'Literature',       Color(0xFF7A2352), Color(0xFF3D0F29)),
+    (Icons.computer_rounded,     'Computer Science', Color(0xFF2A5A1A), Color(0xFF122A09)),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 74, height: 24,
-          child: Stack(
-            children: List.generate(5, (i) => Positioned(
-              left: i * 13.0,
-              child: Container(
-                width: 24, height: 24,
-                decoration: BoxDecoration(
-                  color: _avatarColors[i],
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _bg, width: 2),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.school_rounded, size: 14, color: _green700),
+              const SizedBox(width: 6),
+              Text(
+                'Study Subjects',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _green700.withValues(alpha: 0.80),
+                  letterSpacing: 0.2,
                 ),
-                child: Center(child: Text(
-                  ['A', 'B', 'C', 'D', 'E'][i],
-                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
-                )),
               ),
-            )),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _green500.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${_subjects.length}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: _green500,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
-        Text(
-          'Joined by students worldwide',
-          style: TextStyle(
-            fontSize: 11,
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.45),
-            fontWeight: FontWeight.w500,
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: _subjects.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final (icon, name, color, dark) = _subjects[i];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: 0.12),
+                      dark.withValues(alpha: 0.06),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: color.withValues(alpha: 0.30), width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 13, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      name.split(' ').first,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: color.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUOTE ROW  — static motivational learning quote
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _QuoteRow extends StatelessWidget {
+  const _QuoteRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.60),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _green500.withValues(alpha: 0.15), width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: _green500.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text('💡', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '"An investment in knowledge pays the best interest."',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: Color(0xFF1B3A2A),
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '— Benjamin Franklin',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: const Color(0xFF1A1A2E).withValues(alpha: 0.45),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

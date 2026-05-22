@@ -52,20 +52,41 @@ const List<Map<String, dynamic>> defaultFields = [
   },
 ];
 
+/// Per-field gradient cache for admin-created fields.
+/// Populated by AppProvider when the Firestore admin_fields stream fires.
+final Map<String, List<Color>> _adminGradientCache = {};
+
+void setAdminFieldGradient(String fieldId, List<String> hex) {
+  if (hex.length >= 2) {
+    _adminGradientCache[fieldId] = [
+      Color(int.parse('FF${hex[0]}', radix: 16)),
+      Color(int.parse('FF${hex[1]}', radix: 16)),
+    ];
+  }
+}
+
+void removeAdminFieldGradient(String fieldId) {
+  _adminGradientCache.remove(fieldId);
+}
+
 List<Color> fieldGradient(String fieldId) {
-  final f = defaultFields.firstWhere((x) => x['id'] == fieldId,
-      orElse: () => defaultFields[0]);
-  final hex = f['gradientHex'] as List;
-  return [
-    Color(int.parse('FF${hex[0]}', radix: 16)),
-    Color(int.parse('FF${hex[1]}', radix: 16)),
-  ];
+  final idx = defaultFields.indexWhere((x) => x['id'] == fieldId);
+  if (idx != -1) {
+    final hex = defaultFields[idx]['gradientHex'] as List;
+    return [
+      Color(int.parse('FF${hex[0]}', radix: 16)),
+      Color(int.parse('FF${hex[1]}', radix: 16)),
+    ];
+  }
+  // Admin-created field — use its registered gradient or a sensible default
+  return _adminGradientCache[fieldId] ??
+      [const Color(0xFF3730A3), const Color(0xFF5B5FEF)];
 }
 
 Color fieldColor(String fieldId) {
-  final f = defaultFields.firstWhere((x) => x['id'] == fieldId,
-      orElse: () => defaultFields[0]);
-  return Color(f['colorValue'] as int);
+  final idx = defaultFields.indexWhere((x) => x['id'] == fieldId);
+  if (idx != -1) return Color(defaultFields[idx]['colorValue'] as int);
+  return _adminGradientCache[fieldId]?.last ?? const Color(0xFF5B5FEF);
 }
 
 List<FieldModel> get builtInFields =>

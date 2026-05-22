@@ -19,6 +19,7 @@ class AppProvider extends ChangeNotifier {
   final _uuid = const Uuid();
 
   // ── Study State ────────────────────────────────────────────────────────────
+  // Built-in fields are always the base; admin-created fields from Firestore are merged in.
   List<FieldModel> _fields = builtInFields;
   FieldModel? _selectedField;
   String _currentLevel = 'easy';
@@ -56,6 +57,18 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription? _adminNotifSub;
   final Set<String> _shownAdminNotifIds = {};
 
+  // ── Admin-created Fields (Firestore) ──────────────────────────────────────
+  List<FieldModel> _adminFields = [];
+  StreamSubscription? _adminFieldsSub;
+
+  // ── User-created Decks (Firestore) ─────────────────────────────────────────
+  List<FieldModel> _userDecks = [];
+  StreamSubscription? _userDecksSub;
+
+  // ── Suspended State ─────────────────────────────────────────────────────────
+  bool _isSuspended = false;
+  StreamSubscription? _suspendedSub;
+
   // ── Certificate State ──────────────────────────────────────────────────────
   CertificateInfo? _lastCertificate;
   bool _certEmailSent = false;
@@ -67,6 +80,9 @@ class AppProvider extends ChangeNotifier {
   // ── Theme State ────────────────────────────────────────────────────────────
   bool _isDarkMode = false;
 
+  // ── Day Goal ───────────────────────────────────────────────────────────────
+  int _dayGoal = 10;
+
   // ── Weekly Stats (persisted) ────────────────────────────────────────────────
   Map<String, int> _dailyCards = {};
   List<Map<String, dynamic>> _quizLog = [];
@@ -76,7 +92,21 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ── Getters ───────────────────────────────────────────────────────────────
-  List<FieldModel> get fields => _fields;
+  /// Combined list: built-in fields, then admin-created, then user-created decks.
+  List<FieldModel> get fields => [...builtInFields, ..._adminFields, ..._userDecks];
+
+  /// Returns true when this fieldId belongs to an admin-created (Firestore) field.
+  bool isAdminField(String fieldId) =>
+      _adminFields.any((f) => f.id == fieldId);
+
+  /// Returns true when this fieldId belongs to a user-created deck.
+  bool isUserDeck(String fieldId) =>
+      _userDecks.any((f) => f.id == fieldId);
+
+  /// Returns the uid of the deck creator, or null for built-in/admin fields.
+  String? deckCreatorUid(String fieldId) =>
+      _userDecks.firstWhere((f) => f.id == fieldId, orElse: () =>
+          const FieldModel(id: '', name: '', icon: '', colorValue: 0, desc: '', gradientHex: [])).createdBy;
   FieldModel? get selectedField => _selectedField;
   String get currentLevel => _currentLevel;
   int get cardIndex => _cardIndex;
@@ -90,6 +120,7 @@ class AppProvider extends ChangeNotifier {
   int get quizIndex => _quizIndex;
   bool get allLevelsComplete => _completedLevels.length >= 3;
   bool get isAdmin => _authService.isAdmin;
+  bool get isSuspended => _isSuspended;
   bool get isDarkMode => _isDarkMode;
   AuthService get auth => _authService;
   NotificationService get notifService => _notifService;
@@ -187,6 +218,7 @@ class AppProvider extends ChangeNotifier {
   static const _kFieldLevels  = 'field_levels_v1';
   static const _kFullName     = 'full_name_v1';
   static const _kDarkMode     = 'dark_mode_v1';
+  static const _kDayGoal      = 'day_goal_v1';
 
   // Unique ID for the signed-in user (Firebase UID > demo email > fallback)
   String get _uid {
@@ -206,6 +238,7 @@ class AppProvider extends ChangeNotifier {
   String get _kFieldFinalsUser  => '${_kFieldFinals}_$_uid';
   String get _kFieldLevelsUser  => '${_kFieldLevels}_$_uid';
   String get _kFullNameUser     => '${_kFullName}_$_uid';
+  String get _kDayGoalUser      => '${_kDayGoal}_$_uid';
 
   Future<void> _loadStats() async {
     final prefs = await SharedPreferences.getInstance();
@@ -266,12 +299,99 @@ class AppProvider extends ChangeNotifier {
     if (fn != null && fn.isNotEmpty) _fullName = fn;
 
     _isDarkMode = prefs.getBool(_kDarkMode) ?? false;
+    _dayGoal    = prefs.getInt(_kDayGoalUser) ?? 10;
 
     notifyListeners();
     // Sync to Firestore on every startup so admin can see all active users,
     // even for sessions that were already logged in before going through login.
     _syncToFirestore();
     _startAdminNotifListener();
+    _startAdminFieldsListener();
+    _startUserDecksListener();
+    _startSuspendedListener();
+  }
+
+  /// Listens to admin-created fields in Firestore and keeps [_adminFields] in sync.
+  /// Called once on startup; subsequent calls are no-ops while the subscription is active.
+  void _startAdminFieldsListener() {
+    if (_adminFieldsSub != null) return;
+    _adminFieldsSub = FirestoreService().adminFieldsStream.listen(
+      (snap) {
+        _adminFields = snap.docs.map((doc) {
+          final d = doc.data();
+          return FieldModel.fromMap({
+            'id': d['id'] ?? doc.id,
+            'name': d['name'] ?? '',
+            'icon': d['icon'] ?? 'subject',
+            'colorValue': (d['colorValue'] as num?)?.toInt() ?? 0xFF5B5FEF,
+            'desc': d['desc'] ?? '',
+            'gradientHex':
+                List<String>.from(d['gradientHex'] as List? ?? ['3730A3', '5B5FEF']),
+          });
+        }).toList();
+        // Register gradients so fieldGradient() works for admin-created fields.
+        for (final f in _adminFields) {
+          setAdminFieldGradient(f.id, f.gradientHex);
+        }
+        notifyListeners();
+      },
+      onError: (_) {},
+      cancelOnError: false,
+    );
+  }
+
+  /// Listens to user-created decks in Firestore and keeps [_userDecks] in sync.
+  void _startUserDecksListener() {
+    if (_userDecksSub != null) return;
+    _userDecksSub = FirestoreService().userDecksStream.listen(
+      (snap) {
+        _userDecks = snap.docs.map((doc) {
+          final d = doc.data();
+          return FieldModel.fromMap({
+            'id': d['id'] ?? doc.id,
+            'name': d['name'] ?? '',
+            'icon': d['icon'] ?? '📦',
+            'colorValue': (d['colorValue'] as num?)?.toInt() ?? 0xFF16A34A,
+            'desc': d['desc'] ?? '',
+            'gradientHex': List<String>.from(d['gradientHex'] as List? ?? ['16A34A', '1E3A5F']),
+            'createdBy': d['createdBy'],
+            'createdByName': d['createdByName'],
+          });
+        }).toList();
+        for (final f in _userDecks) {
+          setAdminFieldGradient(f.id, f.gradientHex);
+        }
+        notifyListeners();
+      },
+      onError: (_) {},
+      cancelOnError: false,
+    );
+  }
+
+  /// Listens to the current user's Firestore document for the `suspended` flag.
+  /// Re-starts on every login so the listener is always scoped to the right UID.
+  void _startSuspendedListener() {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return; // not signed in yet
+    _suspendedSub?.cancel();
+    _suspendedSub = FirestoreService().userSuspendedStream(uid).listen(
+      (suspended) {
+        if (_isSuspended == suspended) return; // no-op if unchanged
+        _isSuspended = suspended;
+        if (suspended) {
+          // Show an in-app alert so the user knows their account is restricted.
+          _notifService.addNotification(
+            type: NotifType.admin,
+            title: 'Account Suspended',
+            body: 'Your account has been suspended by an administrator. '
+                'You can still browse content but cannot create new decks.',
+          );
+        }
+        notifyListeners();
+      },
+      onError: (_) {},
+      cancelOnError: false,
+    );
   }
 
   void _startAdminNotifListener() {
@@ -335,6 +455,12 @@ class AppProvider extends ChangeNotifier {
     _certEmailSending = false;
     _fullName = null;
     _shownAdminNotifIds.clear();
+    _userDecksSub?.cancel();
+    _userDecksSub = null;
+    _userDecks = [];
+    _suspendedSub?.cancel();
+    _suspendedSub = null;
+    _isSuspended = false;
     await _loadStats();
     _syncToFirestore();
   }
@@ -777,7 +903,10 @@ class AppProvider extends ChangeNotifier {
     _adminCardsSub?.cancel();
     _adminMcqSub?.cancel();
     _adminFinalSub?.cancel();
+    _adminFieldsSub?.cancel();
     _adminNotifSub?.cancel();
+    _userDecksSub?.cancel();
+    _suspendedSub?.cancel();
     super.dispose();
   }
 
@@ -835,7 +964,8 @@ class AppProvider extends ChangeNotifier {
     _quizAnswers = [];
 
     final fieldId = _selectedField?.id ?? 'math';
-    final rawData = assessmentData[fieldId] ?? assessmentData['math']!;
+    // Use empty map for admin-created fields that have no built-in assessment data.
+    final rawData = assessmentData[fieldId] ?? <String, dynamic>{};
     final localData = List<Map<String, dynamic>>.from(rawData[level] ?? []);
     final adminData = List<Map<String, dynamic>>.from(
       _adminMcqQuestions[fieldId]?[level] ?? [],
@@ -864,11 +994,12 @@ class AppProvider extends ChangeNotifier {
     _quizLevel = 'final';
 
     final fieldId = _selectedField?.id ?? 'math';
-    final raw = assessmentData[fieldId] ?? assessmentData['math']!;
+    // Use empty map for admin-created fields that have no built-in assessment data.
+    final raw = assessmentData[fieldId] ?? <String, dynamic>{};
     final mixed = <Map<String, dynamic>>[
-      ...((raw['easy'] ?? []).take(4)),
-      ...((raw['normal'] ?? []).take(3)),
-      ...((raw['hard'] ?? []).take(3)),
+      ...((raw['easy'] as List? ?? []).take(4)),
+      ...((raw['normal'] as List? ?? []).take(3)),
+      ...((raw['hard'] as List? ?? []).take(3)),
     ];
     final adminFinal = List<Map<String, dynamic>>.from(
       _adminFinalQuestions[fieldId] ?? [],
@@ -950,7 +1081,10 @@ class AppProvider extends ChangeNotifier {
         _notifService.notifyCourseComplete(_selectedField?.name ?? '');
         _fieldFinalsPassed.add(fieldId);
         _saveFieldFinals();
-        _issueCertificate(fieldId);
+        // Certificates are only issued for built-in fields, not admin-created decks.
+        if (!isAdminField(fieldId)) {
+          _issueCertificate(fieldId);
+        }
       }
     } else {
       _notifService.notifyQuizResult(pct, score, total, passed);
@@ -1047,26 +1181,124 @@ class AppProvider extends ChangeNotifier {
     return true;
   }
 
-  void addField(FieldModel field) {
+  /// Saves a field to Firestore so ALL users see it immediately via the stream.
+  Future<void> addField(FieldModel field) async {
     if (!_guardAdmin()) return;
-    _fields = [..._fields, field];
+    await FirestoreService().saveAdminField(
+      id: field.id,
+      name: field.name,
+      icon: field.icon,
+      desc: field.desc,
+      colorValue: field.colorValue,
+      gradientHex: field.gradientHex,
+    );
+    // _adminFields is updated automatically by the Firestore stream listener.
     _notifService.notifyAdminAction('Field "${field.name}" added successfully.');
-    notifyListeners();
   }
 
-  void updateField(FieldModel updated) {
+  Future<void> updateField(FieldModel updated) async {
     if (!_guardAdmin()) return;
-    _fields = _fields.map((f) => f.id == updated.id ? updated : f).toList();
+    if (isAdminField(updated.id)) {
+      await FirestoreService().saveAdminField(
+        id: updated.id,
+        name: updated.name,
+        icon: updated.icon,
+        desc: updated.desc,
+        colorValue: updated.colorValue,
+        gradientHex: updated.gradientHex,
+      );
+    } else if (isUserDeck(updated.id)) {
+      final existing = _userDecks.firstWhere((d) => d.id == updated.id);
+      await FirestoreService().saveUserDeck(
+        id: updated.id,
+        name: updated.name,
+        icon: updated.icon,
+        desc: updated.desc,
+        colorValue: updated.colorValue,
+        gradientHex: updated.gradientHex,
+        createdBy: existing.createdBy ?? '',
+        createdByName: existing.createdByName ?? '',
+      );
+    } else {
+      // Built-in field: update in memory only (session-scoped).
+      _fields = _fields.map((f) => f.id == updated.id ? updated : f).toList();
+      notifyListeners();
+    }
     _notifService.notifyAdminAction('Field "${updated.name}" updated.');
-    notifyListeners();
   }
 
-  void deleteField(String fieldId) {
+  Future<void> deleteField(String fieldId) async {
     if (!_guardAdmin()) return;
-    final name = _fields.firstWhere((f) => f.id == fieldId).name;
-    _fields = _fields.where((f) => f.id != fieldId).toList();
+    final name = fields.firstWhere(
+      (f) => f.id == fieldId,
+      orElse: () => FieldModel(
+          id: fieldId, name: fieldId, icon: '', colorValue: 0, desc: '', gradientHex: []),
+    ).name;
+    if (isAdminField(fieldId)) {
+      await FirestoreService().deleteAdminField(fieldId);
+      removeAdminFieldGradient(fieldId);
+    } else if (isUserDeck(fieldId)) {
+      await FirestoreService().deleteUserDeck(fieldId);
+      removeAdminFieldGradient(fieldId);
+    } else {
+      _fields = _fields.where((f) => f.id != fieldId).toList();
+      notifyListeners();
+    }
     _notifService.notifyAdminAction('Field "$name" deleted.');
-    notifyListeners();
+  }
+
+  // ── User Deck CRUD (no admin guard — any authenticated user can manage their own deck) ──
+
+  Future<void> addUserDeck(FieldModel deck) async {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    // Suspended users cannot create new decks.
+    if (_isSuspended) {
+      _notifService.addNotification(
+        type: NotifType.admin,
+        title: 'Account Suspended',
+        body: 'Your account is suspended. Creating new decks is not allowed.',
+      );
+      return;
+    }
+    await FirestoreService().saveUserDeck(
+      id: deck.id,
+      name: deck.name,
+      icon: deck.icon,
+      desc: deck.desc,
+      colorValue: deck.colorValue,
+      gradientHex: deck.gradientHex,
+      createdBy: uid,
+      createdByName: _authService.displayName,
+    );
+  }
+
+  Future<void> updateUserDeck(FieldModel updated) async {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    final deck = _userDecks.firstWhere((d) => d.id == updated.id,
+        orElse: () => updated);
+    if (!isAdmin && deck.createdBy != uid) return;
+    await FirestoreService().saveUserDeck(
+      id: updated.id,
+      name: updated.name,
+      icon: updated.icon,
+      desc: updated.desc,
+      colorValue: updated.colorValue,
+      gradientHex: updated.gradientHex,
+      createdBy: deck.createdBy ?? uid,
+      createdByName: deck.createdByName ?? _authService.displayName,
+    );
+  }
+
+  Future<void> deleteUserDeck(String deckId) async {
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    final deck = _userDecks.firstWhere((d) => d.id == deckId,
+        orElse: () => FieldModel(id: '', name: '', icon: '', colorValue: 0, desc: '', gradientHex: []));
+    if (!isAdmin && deck.createdBy != uid) return;
+    await FirestoreService().deleteUserDeck(deckId);
+    removeAdminFieldGradient(deckId);
   }
 
   void adminUpdateCard(String action) {
@@ -1080,6 +1312,25 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kDarkMode, _isDarkMode);
+  }
+
+  // ── Day Goal ───────────────────────────────────────────────────────────────
+
+  int get dayGoal => _dayGoal;
+
+  int get todayCardCount {
+    final now = DateTime.now();
+    final key = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return _dailyCards[key] ?? 0;
+  }
+
+  bool get dayGoalReached => _dayGoal > 0 && todayCardCount >= _dayGoal;
+
+  Future<void> setDayGoal(int goal) async {
+    _dayGoal = goal.clamp(1, 100);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kDayGoalUser, _dayGoal);
   }
 
 }
